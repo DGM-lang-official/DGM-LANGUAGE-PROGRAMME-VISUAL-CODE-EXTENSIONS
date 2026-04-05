@@ -31,7 +31,7 @@
   },
   "For Loop": {
     "prefix": "fr",
-    "body": "fr (${1:item} in ${2:collection}) {\n\t${3:# body}\n}",
+    "body": "fr ${1:item} in ${2:collection} {\n\t${3:# body}\n}",
     "description": "For loop (iterate over collection)"
   },
   "Try-Catch": {
@@ -66,7 +66,7 @@
   },
   "Lambda Function": {
     "prefix": "lam",
-    "body": "lam(${1:params}) { ${2:body} }",
+    "body": "lam(${1:params}) => ${2:expr}",
     "description": "Create anonymous function"
   },
   "HTTP GET Request": {

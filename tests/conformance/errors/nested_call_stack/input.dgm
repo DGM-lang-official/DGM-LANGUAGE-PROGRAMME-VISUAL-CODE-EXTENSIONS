@@ -1,0 +1,13 @@
+def c() {
+  throw "err"
+}
+
+def b() {
+  c()
+}
+
+def a() {
+  b()
+}
+
+a()

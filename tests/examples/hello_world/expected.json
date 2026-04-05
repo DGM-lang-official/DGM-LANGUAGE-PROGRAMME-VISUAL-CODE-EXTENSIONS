@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "input": "let name = \"world\"\nwrit(f\"Hello, {name}!\")\n",
+  "tokens": null,
+  "ast": null,
+  "status": 0,
+  "stdout": "Hello, world!\n",
+  "stderr": "",
+  "error": null
+}

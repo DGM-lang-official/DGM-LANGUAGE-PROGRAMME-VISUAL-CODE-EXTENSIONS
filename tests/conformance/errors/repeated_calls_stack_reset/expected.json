@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "input": "def fail() {\n  undefined_var\n}\n\ntry {\n  fail()\n} catch (err) {\n  writ(err)\n}\n\nfail()\n",
+  "tokens": null,
+  "ast": null,
+  "status": 1,
+  "stdout": "[E100] undefined variable 'undefined_var'\n",
+  "stderr": "[E100] undefined variable 'undefined_var'\n --> input.dgm:2:3\n  |\n2 |   undefined_var\n  |   ^\nStack trace:\n  at fail (input.dgm:11:1)\n",
+  "error": {
+    "code": "E100",
+    "message": "undefined variable 'undefined_var'",
+    "span": {
+      "file": "input.dgm",
+      "line": 2,
+      "col": 3
+    },
+    "stack": [
+      {
+        "function": "fail",
+        "span": {
+          "file": "input.dgm",
+          "line": 11,
+          "col": 1
+        }
+      }
+    ]
+  }
+}

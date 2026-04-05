@@ -1,0 +1,3 @@
+imprt counter
+imprt counter
+writ(counter.value)

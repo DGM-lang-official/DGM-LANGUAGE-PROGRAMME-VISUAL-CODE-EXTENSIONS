@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "input": "let value = 1 + 2 * 3\nlet choice = true ? 10 : 20\n",
+  "tokens": null,
+  "ast": [
+    {
+      "Let": {
+        "name": "value",
+        "value": {
+          "BinOp": {
+            "op": "+",
+            "left": { "IntLit": 1 },
+            "right": {
+              "BinOp": {
+                "op": "*",
+                "left": { "IntLit": 2 },
+                "right": { "IntLit": 3 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "Let": {
+        "name": "choice",
+        "value": {
+          "Ternary": {
+            "condition": { "BoolLit": true },
+            "then_expr": { "IntLit": 10 },
+            "else_expr": { "IntLit": 20 }
+          }
+        }
+      }
+    }
+  ],
+  "status": 0,
+  "stdout": "",
+  "stderr": "",
+  "error": null
+}

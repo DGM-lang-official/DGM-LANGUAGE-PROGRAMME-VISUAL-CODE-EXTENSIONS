@@ -9,18 +9,18 @@
 | Module | Status | Primary Functions | Risk |
 |--------|--------|-------------------|------|
 | `math` | Stable | sqrt, sin, cos, tan, random, ceil, floor, abs, min, max, pow | Low |
-| `io` | Stable | read_file, write_file, read_dir, mkdir | Low |
+| `io` | Stable | read_file, write_file, list_dir, exists | Low |
 | `fs` | Stable | read, write, append, delete, list, exists | Low |
-| `os` | Stable | exec, env, platform, sleep, get_env | Low |
-| `json` | Stable | parse, stringify | Low |
+| `os` | Stable | exec, spawn, run, run_timeout, env | Low |
+| `json` | Stable | parse, stringify, raw_parts | Low |
 | `http` | Stable | get, post, serve | Low |
 | `crypto` | Stable | sha256, md5, base64_encode, base64_decode, hmac_sha256 | Low |
 | `regex` | Stable | match, split, replace, find_all | Low |
 | `net` | Stable | tcp_connect, tcp_listen | Low |
-| `time` | Stable | now, timestamp, strftime, sleep | Low |
-| `thread` | Stable | spawn, join | Low |
-| `xml` | Stable | parse, stringify | Low |
-| `security` | Internal | set_sandbox_path, is_sandboxed | Internal |
+| `time` | Stable | now, now_ms, format, parse, elapsed | Low |
+| `thread` | Stable | sleep, available_cpus | Low |
+| `xml` | Stable | parse, stringify, query | Low |
+| `security` | Internal | configure, status | Internal |
 
 ---
 
@@ -54,8 +54,13 @@ math.log10(n)             # Log base 10
 ```
 io.read_file(path)        # Read entire file as string
 io.write_file(path, data) # Write data to file
-io.read_dir(path)         # List directory contents
+io.append_file(path, data)# Append text to file
+io.exists(path)           # Check path existence
+io.delete(path)           # Delete file or directory
 io.mkdir(path)            # Create directory
+io.list_dir(path)         # List directory contents
+io.cwd()                  # Current working directory
+io.input(prompt?)         # Read line from stdin
 ```
 
 **Constraints**: No sandbox restrictions on `io` (replaced by `fs`).
@@ -74,7 +79,7 @@ fs.list(dir)              # List directory (sandboxed)
 fs.exists(path)           # Check existence (sandboxed)
 ```
 
-**Constraints**: Obeys security sandbox set by `security.set_sandbox_path()`.
+**Constraints**: Obeys security policy configured via `security.configure(...)`.
 
 ---
 
@@ -82,10 +87,17 @@ fs.exists(path)           # Check existence (sandboxed)
 
 **Stable functions**:
 ```
-os.exec(cmd, args)        # Execute shell command
-os.get_env(name)          # Get environment variable
+os.exec(cmd)              # Execute shell command through system shell
+os.spawn(cmd)             # Spawn shell command, return handle + pid
+os.run(program, args)     # Execute program without shell
+os.run_timeout(program, args, timeout_ms) # Execute with timeout
+os.wait(handle, timeout_ms?) # Wait on spawned process
+os.env(name)              # Get environment variable
+os.set_env(name, value)   # Set environment variable
 os.platform()             # Get OS (linux, windows, macos)
 os.sleep(ms)              # Sleep milliseconds
+os.cwd()                  # Current working directory
+os.chdir(path)            # Change working directory
 ```
 
 **Constraints**: `exec` requires security approval.
@@ -170,10 +182,11 @@ net.tcp_listen(port)              # Listen on TCP port
 
 **Stable functions**:
 ```
-time.now()                   # Current UNIX timestamp (seconds)
-time.timestamp()             # Alias for now()
-time.strftime(fmt, ts)       # Format timestamp
-time.sleep(ms)               # Sleep milliseconds
+time.now()                # Current UNIX timestamp (seconds)
+time.now_ms()             # Current UNIX timestamp (milliseconds)
+time.format(ts, fmt)      # Format UNIX timestamp
+time.parse(str, fmt)      # Parse datetime string to UNIX timestamp
+time.elapsed(start_ms)    # Milliseconds elapsed since start
 ```
 
 **Status**: Stable for general use.
@@ -184,14 +197,13 @@ time.sleep(ms)               # Sleep milliseconds
 
 **Stable functions**:
 ```
-thread.spawn(func)           # Spawn thread, return handle
-thread.join(handle)          # Wait for thread completion
+thread.sleep(ms)             # Sleep current thread
+thread.available_cpus()      # Number of available CPUs
 ```
 
 **Constraints**: 
-- Concurrency system is stable
-- Environment lifecycle is bounded (fixed Rc cycles)
-- request_scope reports 0 survivors
+- Utility helpers only in current runtime
+- No user-exposed thread spawning API in v0.2.0 runtime
 
 ---
 
@@ -201,6 +213,7 @@ thread.join(handle)          # Wait for thread completion
 ```
 xml.parse(string)            # Parse XML, return tree
 xml.stringify(tree)          # Convert tree to XML string
+xml.query(tree, path)        # Find first child node by dotted path
 ```
 
 **Status**: Stable, uses `quick-xml` crate.
@@ -213,8 +226,8 @@ xml.stringify(tree)          # Convert tree to XML string
 
 **Functions**:
 ```
-security.set_sandbox_path(path)  # Define sandbox boundary
-security.is_sandboxed()          # Check if sandboxing enabled
+security.configure(opts_map)     # Update runtime security policy
+security.status()                # Read current security policy
 ```
 
 **Constraints**: Thread-local configuration, affects `fs` module only.

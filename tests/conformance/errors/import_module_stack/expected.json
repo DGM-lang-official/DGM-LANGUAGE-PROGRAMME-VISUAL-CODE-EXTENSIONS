@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "input": "imprt \"helpers\"\n",
+  "tokens": null,
+  "ast": null,
+  "status": 1,
+  "stdout": "",
+  "stderr": "[E400] module err\n --> helpers.dgm:2:3\n  |\n2 |   throw \"module err\"\n  |   ^\nStack trace:\n  at boom (helpers.dgm:5:1)\n  at <module helpers> (helpers.dgm:1:1)\n",
+  "error": {
+    "code": "E400",
+    "message": "module err",
+    "span": {
+      "file": "helpers.dgm",
+      "line": 2,
+      "col": 3
+    },
+    "stack": [
+      {
+        "function": "boom",
+        "span": {
+          "file": "helpers.dgm",
+          "line": 5,
+          "col": 1
+        }
+      },
+      {
+        "function": "<module helpers>",
+        "span": {
+          "file": "helpers.dgm",
+          "line": 1,
+          "col": 1
+        }
+      }
+    ]
+  }
+}

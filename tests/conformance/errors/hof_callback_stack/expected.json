@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "input": "def mapper(x) {\n  iff (x == 2) {\n    throw \"boom\"\n  }\n  retrun x\n}\n\nmap([1, 2, 3], mapper)\n",
+  "tokens": null,
+  "ast": null,
+  "status": 1,
+  "stdout": "",
+  "stderr": "[E400] boom\n --> input.dgm:3:5\n  |\n3 |     throw \"boom\"\n  |     ^\nStack trace:\n  at mapper (input.dgm:8:1)\n  at map (input.dgm:8:1)\n",
+  "error": {
+    "code": "E400",
+    "message": "boom",
+    "span": {
+      "file": "input.dgm",
+      "line": 3,
+      "col": 5
+    },
+    "stack": [
+      {
+        "function": "mapper",
+        "span": {
+          "file": "input.dgm",
+          "line": 8,
+          "col": 1
+        }
+      },
+      {
+        "function": "map",
+        "span": {
+          "file": "input.dgm",
+          "line": 8,
+          "col": 1
+        }
+      }
+    ]
+  }
+}

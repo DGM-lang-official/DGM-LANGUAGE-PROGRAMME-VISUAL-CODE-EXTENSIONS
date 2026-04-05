@@ -1,0 +1,21 @@
+cls Animal {
+  def speak() {
+    retrun "noise"
+  }
+}
+
+cls Dog extends Animal {
+  def speak() {
+    retrun "woof"
+  }
+}
+
+let dog = new Dog()
+writ(dog.speak())
+
+let prefix = "good "
+def make_message(suffix) {
+  retrun lam() => prefix + suffix
+}
+let message = make_message("dog")
+writ(message())

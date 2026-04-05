@@ -1,0 +1,6 @@
+let base = 7
+def make_adder(x) {
+  retrun lam(y) => x + y + base
+}
+let add = make_adder(3)
+writ(add(2))

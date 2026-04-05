@@ -1,0 +1,2 @@
+imprt math as m
+writ(m.sqrt(9))

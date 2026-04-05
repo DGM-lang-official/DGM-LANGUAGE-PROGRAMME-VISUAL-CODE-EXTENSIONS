@@ -1,0 +1,5 @@
+def boom() {
+  throw "module err"
+}
+
+boom()

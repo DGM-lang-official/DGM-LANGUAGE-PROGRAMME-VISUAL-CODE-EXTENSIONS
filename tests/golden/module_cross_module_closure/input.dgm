@@ -1,0 +1,3 @@
+imprt "helpers"
+let add = helpers.make_adder(3)
+writ(add(5))

@@ -1,25 +1,9 @@
-mod ast;
-mod environment;
-mod error;
-mod interpreter;
-mod lexer;
-mod parser;
-mod token;
-pub mod stdlib;
-
-use interpreter::Interpreter;
-use lexer::Lexer;
-use parser::Parser;
+use dgm::interpreter::Interpreter;
+use dgm::lexer::Lexer;
+use dgm::parser::Parser;
+use dgm::{run_named_source, validate_named_source};
+use std::sync::Arc;
 use std::io::{self, Write};
-
-fn run_source(source: &str) -> Result<(), error::DgmError> {
-    let mut lexer = Lexer::new(source);
-    let tokens = lexer.tokenize()?;
-    let mut parser = Parser::new(tokens);
-    let stmts = parser.parse()?;
-    let mut interp = Interpreter::new();
-    interp.run(stmts)
-}
 
 fn run_file(path: &str) {
     // [B] FILE CONVENTION: Enforce .dgm extension
@@ -30,8 +14,28 @@ fn run_file(path: &str) {
     
     match std::fs::read_to_string(path) {
         Ok(source) => {
-            if let Err(e) = run_source(&source) {
-                eprintln!("{}", e);
+            if let Err(e) = run_named_source(&source, path) {
+                eprint!("{}", e.render(path, &source));
+                std::process::exit(1);
+            }
+        }
+        Err(e) => {
+            eprintln!("Cannot read file '{}': {}", path, e);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn validate_file(path: &str) {
+    if !path.ends_with(".dgm") {
+        eprintln!("Error: DGM files must have .dgm extension");
+        std::process::exit(1);
+    }
+
+    match std::fs::read_to_string(path) {
+        Ok(source) => {
+            if let Err(e) = validate_named_source(&source, path) {
+                eprint!("{}", e.render(path, &source));
                 std::process::exit(1);
             }
         }
@@ -45,7 +49,7 @@ fn run_file(path: &str) {
 fn run_repl() {
     println!("DGM 0.2.0 — Interactive REPL");
     println!("Type 'exit' to quit, 'help' for commands\n");
-    let mut interp = Interpreter::new();
+    let mut interp = Interpreter::new(Arc::new("<repl>".to_string()));
 
     let config = rustyline::config::Config::builder()
         .history_ignore_space(true)
@@ -77,18 +81,18 @@ fn run_repl() {
                 }
                 let _ = rl.add_history_entry(&line);
 
-                let mut lexer = Lexer::new(&line);
+                let mut lexer = Lexer::with_file(&line, Arc::new("<repl>".to_string()));
                 let tokens = match lexer.tokenize() {
                     Ok(t) => t,
-                    Err(e) => { eprintln!("\x1b[31m{}\x1b[0m", e); continue; }
+                    Err(e) => { eprintln!("\x1b[31m{}\x1b[0m", e.render("<repl>", &line).trim_end()); continue; }
                 };
                 let mut parser = Parser::new(tokens);
                 let stmts = match parser.parse() {
                     Ok(s) => s,
-                    Err(e) => { eprintln!("\x1b[31m{}\x1b[0m", e); continue; }
+                    Err(e) => { eprintln!("\x1b[31m{}\x1b[0m", e.render("<repl>", &line).trim_end()); continue; }
                 };
                 if let Err(e) = interp.run(stmts) {
-                    eprintln!("\x1b[31m{}\x1b[0m", e);
+                    eprintln!("\x1b[31m{}\x1b[0m", e.render("<repl>", &line).trim_end());
                 }
             }
             Err(rustyline::error::ReadlineError::Interrupted) => { println!("^C"); continue; }
@@ -112,10 +116,11 @@ fn print_version() {
 fn print_help() {
     println!("DGM Programming Language v0.2.0\n");
     println!("USAGE:");
-    println!("  dgm run <file.dgm>    Run a DGM script");
-    println!("  dgm repl              Start interactive REPL");
-    println!("  dgm version           Show version info");
-    println!("  dgm help              Show this help\n");
+    println!("  dgm run <file.dgm>       Run a DGM script");
+    println!("  dgm validate <file.dgm>  Validate syntax without executing");
+    println!("  dgm repl                 Start interactive REPL");
+    println!("  dgm version              Show version info");
+    println!("  dgm help                 Show this help\n");
     println!("FILE FORMAT:");
     println!("  All DGM scripts must use .dgm extension\n");
     println!("STABLE MODULES:");
@@ -129,8 +134,8 @@ fn print_help() {
     println!("  crypto   — cryptography (sha256, md5, base64, hmac)");
     println!("  regex    — regular expressions");
     println!("  net      — TCP networking");
-    println!("  thread   — spawn/join threads");
-    println!("  xml      — XML parse/stringify\n");
+    println!("  thread   — thread helpers (sleep, available_cpus)");
+    println!("  xml      — XML parse/stringify/query\n");
     println!("EXIT CODES:");
     println!("  0        — Success");
     println!("  1        — Runtime error or file not found\n");
@@ -149,6 +154,14 @@ fn main() {
                 run_file(path);
             } else {
                 eprintln!("Usage: dgm run <file.dgm>");
+                std::process::exit(1);
+            }
+        }
+        Some("validate") => {
+            if let Some(path) = args.get(2) {
+                validate_file(path);
+            } else {
+                eprintln!("Usage: dgm validate <file.dgm>");
                 std::process::exit(1);
             }
         }

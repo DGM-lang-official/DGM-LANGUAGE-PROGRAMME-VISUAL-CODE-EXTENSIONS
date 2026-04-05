@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "input": "let value = 1 + 2 * 3 == 7 and tru\n",
+  "tokens": null,
+  "ast": [
+    {
+      "Let": {
+        "name": "value",
+        "value": {
+          "BinOp": {
+            "left": {
+              "BinOp": {
+                "left": {
+                  "BinOp": {
+                    "left": { "IntLit": 1 },
+                    "op": "+",
+                    "right": {
+                      "BinOp": {
+                        "left": { "IntLit": 2 },
+                        "op": "*",
+                        "right": { "IntLit": 3 }
+                      }
+                    }
+                  }
+                },
+                "op": "==",
+                "right": { "IntLit": 7 }
+              }
+            },
+            "op": "and",
+            "right": { "BoolLit": true }
+          }
+        }
+      }
+    }
+  ],
+  "status": 0,
+  "stdout": "",
+  "stderr": "",
+  "error": null
+}

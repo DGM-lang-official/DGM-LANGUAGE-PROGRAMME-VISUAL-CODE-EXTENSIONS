@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "input": "imprt counter\nimprt counter\nwrit(counter.value)\n",
+  "tokens": null,
+  "ast": null,
+  "status": 0,
+  "stdout": "loaded\n1\n",
+  "stderr": "",
+  "error": null
+}

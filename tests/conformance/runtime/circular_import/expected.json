@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "input": "imprt a\nwrit(a.a_done)\n",
+  "tokens": null,
+  "ast": null,
+  "status": 1,
+  "stdout": "a:start\nb:start\n",
+  "stderr": "[E201] circular import detected for 'a'\n --> b.dgm:2:1\n  |\n2 | imprt a\n  | ^\nStack trace:\n  at <module b> (b.dgm:1:1)\n  at <module a> (a.dgm:1:1)\n",
+  "error": {
+    "code": "E201",
+    "message": "circular import detected for 'a'",
+    "span": {
+      "file": "b.dgm",
+      "line": 2,
+      "col": 1
+    },
+    "stack": [
+      {
+        "function": "<module b>",
+        "span": {
+          "file": "b.dgm",
+          "line": 1,
+          "col": 1
+        }
+      },
+      {
+        "function": "<module a>",
+        "span": {
+          "file": "a.dgm",
+          "line": 1,
+          "col": 1
+        }
+      }
+    ]
+  }
+}

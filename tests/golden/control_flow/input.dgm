@@ -1,0 +1,11 @@
+let value = 2
+iff value == 1 {
+  writ("one")
+} els {
+  writ("other")
+}
+match value {
+  1 => { writ("uno") }
+  2 => { writ("dos") }
+  _ => { writ("fallback") }
+}

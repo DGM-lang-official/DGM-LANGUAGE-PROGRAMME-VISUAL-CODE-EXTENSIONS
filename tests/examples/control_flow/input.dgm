@@ -1,0 +1,6 @@
+let status = 2
+match status {
+  1 => { writ("uno") }
+  2 => { writ("dos") }
+  _ => { writ("fallback") }
+}

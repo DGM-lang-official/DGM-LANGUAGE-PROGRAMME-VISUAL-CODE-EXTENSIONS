@@ -37,9 +37,7 @@ pub fn get_config() -> SecurityConfig {
 pub fn check_fs() -> Result<(), crate::error::DgmError> {
     let cfg = get_config();
     if !cfg.allow_fs {
-        return Err(crate::error::DgmError::RuntimeError {
-            msg: "fs: filesystem access denied by security policy".into(),
-        });
+        return Err(crate::error::DgmError::runtime("fs: filesystem access denied by security policy",));
     }
     Ok(())
 }
@@ -47,9 +45,7 @@ pub fn check_fs() -> Result<(), crate::error::DgmError> {
 pub fn check_exec() -> Result<(), crate::error::DgmError> {
     let cfg = get_config();
     if !cfg.allow_exec {
-        return Err(crate::error::DgmError::RuntimeError {
-            msg: "os: exec access denied by security policy".into(),
-        });
+        return Err(crate::error::DgmError::runtime("os: exec access denied by security policy",));
     }
     Ok(())
 }
@@ -57,9 +53,7 @@ pub fn check_exec() -> Result<(), crate::error::DgmError> {
 pub fn check_net() -> Result<(), crate::error::DgmError> {
     let cfg = get_config();
     if !cfg.allow_net {
-        return Err(crate::error::DgmError::RuntimeError {
-            msg: "net: network access denied by security policy".into(),
-        });
+        return Err(crate::error::DgmError::runtime("net: network access denied by security policy",));
     }
     Ok(())
 }
@@ -70,9 +64,10 @@ pub fn check_host(host: &str) -> Result<(), crate::error::DgmError> {
     if let Some(ref whitelist) = cfg.allowed_hosts {
         let h = host.to_lowercase();
         if !whitelist.iter().any(|allowed| h == allowed.to_lowercase()) {
-            return Err(crate::error::DgmError::RuntimeError {
-                msg: format!("net: host '{}' not in allowed hosts", host),
-            });
+            return Err(crate::error::DgmError::runtime(format!(
+                "net: host '{}' not in allowed hosts",
+                host
+            )));
         }
     }
     Ok(())
@@ -90,9 +85,7 @@ pub fn resolve_sandboxed_path(raw: &str) -> Result<PathBuf, crate::error::DgmErr
         path.to_path_buf()
     } else {
         std::env::current_dir()
-            .map_err(|e| crate::error::DgmError::RuntimeError {
-                msg: format!("fs: cannot get cwd: {}", e),
-            })?
+            .map_err(|e| crate::error::DgmError::runtime(format!("fs: cannot get cwd: {}", e)))?
             .join(path)
     };
 
@@ -102,13 +95,11 @@ pub fn resolve_sandboxed_path(raw: &str) -> Result<PathBuf, crate::error::DgmErr
     if let Some(ref root) = cfg.sandbox_root {
         let norm_root = normalize_path(root);
         if !normalized.starts_with(&norm_root) {
-            return Err(crate::error::DgmError::RuntimeError {
-                msg: format!(
-                    "fs: path '{}' escapes sandbox root '{}'",
-                    normalized.display(),
-                    norm_root.display()
-                ),
-            });
+            return Err(crate::error::DgmError::runtime(format!(
+                "fs: path '{}' escapes sandbox root '{}'",
+                normalized.display(),
+                norm_root.display()
+            )));
         }
     }
 
@@ -136,7 +127,7 @@ fn normalize_path(path: &Path) -> PathBuf {
 // ─── DGM-exposed security configuration ───
 
 use std::collections::HashMap;
-use crate::interpreter::DgmValue;
+use crate::interpreter::{DgmValue, NativeFunction};
 use std::rc::Rc;
 
 pub fn module() -> HashMap<String, DgmValue> {
@@ -150,7 +141,7 @@ pub fn module() -> HashMap<String, DgmValue> {
             name.to_string(),
             DgmValue::NativeFunction {
                 name: format!("security.{}", name),
-                func: *func,
+                func: NativeFunction::simple(*func),
             },
         );
     }
@@ -190,9 +181,7 @@ fn security_configure(a: Vec<DgmValue>) -> Result<DgmValue, crate::error::DgmErr
             set_config(cfg);
             Ok(DgmValue::Bool(true))
         }
-        _ => Err(crate::error::DgmError::RuntimeError {
-            msg: "security.configure(opts_map) required".into(),
-        }),
+        _ => Err(crate::error::DgmError::runtime("security.configure(opts_map) required",)),
     }
 }
 

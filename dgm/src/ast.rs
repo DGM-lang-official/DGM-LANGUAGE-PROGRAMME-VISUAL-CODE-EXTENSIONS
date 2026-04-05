@@ -1,5 +1,33 @@
-#[derive(Debug, Clone)]
-pub enum Expr {
+use serde::Serialize;
+use std::sync::Arc;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Span {
+    pub file: Arc<String>,
+    pub line: usize,
+    pub col: usize,
+}
+
+impl Span {
+    pub fn new(file: Arc<String>, line: usize, col: usize) -> Self {
+        Self { file, line, col }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Expr {
+    pub span: Span,
+    pub kind: ExprKind,
+}
+
+impl Expr {
+    pub fn new(span: Span, kind: ExprKind) -> Self {
+        Self { span, kind }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ExprKind {
     IntLit(i64),
     FloatLit(f64),
     StringLit(String),
@@ -16,15 +44,26 @@ pub enum Expr {
     Map(Vec<(Expr, Expr)>),
     Assign { target: Box<Expr>, op: String, value: Box<Expr> },
     New { class_name: String, args: Vec<Expr> },
-    // New expressions
     Lambda { params: Vec<String>, body: Vec<Stmt> },
     Ternary { condition: Box<Expr>, then_expr: Box<Expr>, else_expr: Box<Expr> },
-    StringInterp(Vec<Expr>), // f"hello {name} world"
+    StringInterp(Vec<Expr>),
     Range { start: Box<Expr>, end: Box<Expr> },
 }
 
-#[derive(Debug, Clone)]
-pub enum Stmt {
+#[derive(Debug, Clone, Serialize)]
+pub struct Stmt {
+    pub span: Span,
+    pub kind: StmtKind,
+}
+
+impl Stmt {
+    pub fn new(span: Span, kind: StmtKind) -> Self {
+        Self { span, kind }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum StmtKind {
     Expr(Expr),
     Let { name: String, value: Expr },
     Writ(Expr),
@@ -41,8 +80,7 @@ pub enum Stmt {
     Break,
     Continue,
     ClassDef { name: String, parent: Option<String>, methods: Vec<Stmt> },
-    Imprt(String),
-    // New statements
+    Imprt { name: String, alias: Option<String> },
     TryCatch {
         try_block: Vec<Stmt>,
         catch_var: Option<String>,

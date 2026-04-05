@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "input": "writ(type(true))\nwrit(type(false))\nwrit(type(null))\nwrit(1 + 2 * 3)\nwrit(2 ** 3 ** 2)\n",
+  "tokens": null,
+  "ast": null,
+  "status": 0,
+  "stdout": "bool\nbool\nnul\n7\n512\n",
+  "stderr": "",
+  "error": null
+}

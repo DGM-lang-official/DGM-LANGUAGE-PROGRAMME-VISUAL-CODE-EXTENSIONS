@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "input": "cls Animal {\n  def speak() {\n    retrun \"noise\"\n  }\n}\n\ncls Dog extends Animal {\n  def speak() {\n    retrun \"woof\"\n  }\n}\n\nlet dog = new Dog()\nwrit(dog.speak())\n\nlet prefix = \"good \"\ndef make_message(suffix) {\n  retrun lam() => prefix + suffix\n}\nlet message = make_message(\"dog\")\nwrit(message())\n",
+  "tokens": null,
+  "ast": null,
+  "status": 0,
+  "stdout": "woof\ngood dog\n",
+  "stderr": "",
+  "error": null
+}

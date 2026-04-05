@@ -1,0 +1,5 @@
+writ(type(true))
+writ(type(false))
+writ(type(null))
+writ(1 + 2 * 3)
+writ(2 ** 3 ** 2)

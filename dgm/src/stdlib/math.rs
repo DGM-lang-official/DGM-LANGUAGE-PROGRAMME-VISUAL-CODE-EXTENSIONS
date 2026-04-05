@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::interpreter::DgmValue;
+use crate::interpreter::{DgmValue, NativeFunction};
 use crate::error::DgmError;
 
 pub fn module() -> HashMap<String, DgmValue> {
@@ -22,12 +22,20 @@ pub fn module() -> HashMap<String, DgmValue> {
         ("hypot", math_hypot), ("sign", math_sign),
         ("gcd", math_gcd), ("lcm", math_lcm), ("factorial", math_factorial),
     ];
-    for (name, func) in fns { m.insert(name.to_string(), DgmValue::NativeFunction { name: format!("math.{}", name), func: *func }); }
+    for (name, func) in fns {
+        m.insert(
+            name.to_string(),
+            DgmValue::NativeFunction {
+                name: format!("math.{}", name),
+                func: NativeFunction::simple(*func),
+            },
+        );
+    }
     m
 }
 
 fn to_f64(v: &DgmValue) -> Result<f64, DgmError> {
-    match v { DgmValue::Int(n) => Ok(*n as f64), DgmValue::Float(f) => Ok(*f), _ => Err(DgmError::RuntimeError { msg: "expected number".into() }) }
+    match v { DgmValue::Int(n) => Ok(*n as f64), DgmValue::Float(f) => Ok(*f), _ => Err(DgmError::runtime("expected number")) }
 }
 
 fn math_sqrt(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Float(to_f64(a.first().unwrap_or(&DgmValue::Int(0)))?.sqrt())) }
@@ -38,7 +46,7 @@ fn math_asin(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Floa
 fn math_acos(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Float(to_f64(a.first().unwrap_or(&DgmValue::Int(0)))?.acos())) }
 fn math_atan(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Float(to_f64(a.first().unwrap_or(&DgmValue::Int(0)))?.atan())) }
 fn math_atan2(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Float(to_f64(&a[0])?.atan2(to_f64(&a[1])?))) }
-fn math_abs(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { match a.first() { Some(DgmValue::Int(n)) => Ok(DgmValue::Int(n.abs())), Some(DgmValue::Float(f)) => Ok(DgmValue::Float(f.abs())), _ => Err(DgmError::RuntimeError { msg: "abs() requires number".into() }) } }
+fn math_abs(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { match a.first() { Some(DgmValue::Int(n)) => Ok(DgmValue::Int(n.abs())), Some(DgmValue::Float(f)) => Ok(DgmValue::Float(f.abs())), _ => Err(DgmError::runtime("abs() requires number")) } }
 fn math_floor(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Int(to_f64(a.first().unwrap_or(&DgmValue::Int(0)))?.floor() as i64)) }
 fn math_ceil(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Int(to_f64(a.first().unwrap_or(&DgmValue::Int(0)))?.ceil() as i64)) }
 fn math_round(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Int(to_f64(a.first().unwrap_or(&DgmValue::Int(0)))?.round() as i64)) }
@@ -59,7 +67,7 @@ fn math_random_int(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
     use rand::Rng;
     match (a.get(0), a.get(1)) {
         (Some(DgmValue::Int(lo)), Some(DgmValue::Int(hi))) => Ok(DgmValue::Int(rand::thread_rng().gen_range(*lo..*hi))),
-        _ => Err(DgmError::RuntimeError { msg: "random_int(lo, hi) requires ints".into() }),
+        _ => Err(DgmError::runtime("random_int(lo, hi) requires ints")),
     }
 }
 fn math_is_nan(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Bool(matches!(a.first(), Some(DgmValue::Float(f)) if f.is_nan()))) }
@@ -71,12 +79,12 @@ fn math_degrees(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::F
 fn math_radians(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Float(to_f64(&a[0])?.to_radians())) }
 fn math_hypot(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> { Ok(DgmValue::Float(to_f64(&a[0])?.hypot(to_f64(&a[1])?))) }
 fn math_sign(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
-    match a.first() { Some(DgmValue::Int(n)) => Ok(DgmValue::Int(n.signum())), Some(DgmValue::Float(f)) => Ok(DgmValue::Float(f.signum())), _ => Err(DgmError::RuntimeError { msg: "sign() requires number".into() }) }
+    match a.first() { Some(DgmValue::Int(n)) => Ok(DgmValue::Int(n.signum())), Some(DgmValue::Float(f)) => Ok(DgmValue::Float(f.signum())), _ => Err(DgmError::runtime("sign() requires number")) }
 }
 fn math_gcd(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
     match (a.get(0), a.get(1)) {
         (Some(DgmValue::Int(x)), Some(DgmValue::Int(y))) => { let (mut a, mut b) = (x.abs(), y.abs()); while b != 0 { let t = b; b = a % b; a = t; } Ok(DgmValue::Int(a)) }
-        _ => Err(DgmError::RuntimeError { msg: "gcd() requires ints".into() }),
+        _ => Err(DgmError::runtime("gcd() requires ints")),
     }
 }
 fn math_lcm(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
@@ -86,12 +94,12 @@ fn math_lcm(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
             while b != 0 { let t = b; b = a % b; a = t; }
             Ok(DgmValue::Int(prod / a))
         }
-        _ => Err(DgmError::RuntimeError { msg: "lcm() requires ints".into() }),
+        _ => Err(DgmError::runtime("lcm() requires ints")),
     }
 }
 fn math_factorial(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
     match a.first() {
-        Some(DgmValue::Int(n)) => { if *n < 0 { return Err(DgmError::RuntimeError { msg: "factorial of negative".into() }); } let mut r: i64 = 1; for i in 2..=*n { r = r.wrapping_mul(i); } Ok(DgmValue::Int(r)) }
-        _ => Err(DgmError::RuntimeError { msg: "factorial() requires int".into() }),
+        Some(DgmValue::Int(n)) => { if *n < 0 { return Err(DgmError::runtime("factorial of negative")); } let mut r: i64 = 1; for i in 2..=*n { r = r.wrapping_mul(i); } Ok(DgmValue::Int(r)) }
+        _ => Err(DgmError::runtime("factorial() requires int")),
     }
 }

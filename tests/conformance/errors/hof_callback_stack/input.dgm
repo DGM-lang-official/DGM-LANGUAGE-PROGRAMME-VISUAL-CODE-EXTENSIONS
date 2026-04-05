@@ -1,0 +1,8 @@
+def mapper(x) {
+  iff (x == 2) {
+    throw "boom"
+  }
+  retrun x
+}
+
+map([1, 2, 3], mapper)

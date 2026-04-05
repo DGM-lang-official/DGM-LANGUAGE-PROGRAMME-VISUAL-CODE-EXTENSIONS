@@ -1,15 +1,17 @@
-# DGM Programming Language
+# DGM Programming Language — Rust Interpreter
 
 <div align="center">
 
-**A dynamically typed, interpreted programming language — written in pure Rust.**
+**A dynamically typed, interpreted programming language — implemented in pure Rust.**
+
+This is the **interpreter implementation** within the [dgm-source repository](../)
 
 Named after **Đặng Gia Minh** · Built from scratch · Zero parser generators · Zero external parser combinators
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](../LICENSE)
 [![Language](https://img.shields.io/badge/language-Rust-orange.svg)](https://www.rust-lang.org)
 [![Version](https://img.shields.io/badge/version-Alpha__Major__1-green.svg)](Cargo.toml)
-[![Tests](https://img.shields.io/badge/tests-17%20passed-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-contract--driven-brightgreen.svg)](#testing)
 
 </div>
 
@@ -55,6 +57,8 @@ Named after **Đặng Gia Minh** · Built from scratch · Zero parser generators
 
 ## Overview
 
+> **Part of dgm-source** — This folder contains the **Rust interpreter implementation** for DGM. The parent repository also includes documentation (LANGUAGE_SPEC.md, STDLIB_SPEC.md), a VS Code extension (vscode-dgm/), and additional project resources.
+
 DGM is a **tree-walk interpreted** programming language with:
 
 - A **hand-written lexer and recursive descent parser** — no yacc, no pest, no nom
@@ -73,10 +77,10 @@ DGM is a **tree-walk interpreted** programming language with:
 | Dynamic typing | Int, Float, Str, Bool, Null, List, Map, Function, Instance |
 | First-class functions | Closures, lambdas, higher-order functions |
 | Classes & inheritance | `cls`, `new`, `ths`, single-parent inheritance |
-| Exception handling | `try / catch / finally / thr` |
-| Pattern matching | `match / case` |
+| Exception handling | `try / catch / finally / throw` |
+| Pattern matching | `match` with `=>` arms |
 | String interpolation | `f"Hello, {name}!"` |
-| Module system | `imprt <module>` — lazy loading |
+| Module system | `imprt <module>` with optional `as` alias — lazy loading |
 | REPL | Interactive shell with history (`rustyline`) |
 | HTTP server | Built-in TCP server via `tiny_http` |
 | Security sandboxing | Filesystem sandbox, exec gate, network whitelist |
@@ -109,9 +113,13 @@ sudo cp target/release/dgm /usr/local/bin/dgm
 
 ## Usage
 
+<!-- GENERATED:CLI_USAGE:START -->
 ```bash
 # Run a DGM script
 dgm run script.dgm
+
+# Validate syntax without executing
+dgm validate script.dgm
 
 # Start interactive REPL
 dgm repl
@@ -121,6 +129,38 @@ dgm version
 
 # Show help
 dgm help
+```
+<!-- GENERATED:CLI_USAGE:END -->
+
+## Executable Examples
+
+These snippets are generated from executable fixtures in `../tests/examples` so the README stays locked to real runtime behavior.
+
+### Hello World
+
+```dgm
+let name = "world"
+writ(f"Hello, {name}!")
+```
+
+### Control Flow
+
+```dgm
+let status = 2
+match status {
+  1 => { writ("uno") }
+  2 => { writ("dos") }
+  _ => { writ("fallback") }
+}
+```
+
+### XML Query
+
+```dgm
+imprt xml
+let doc = xml.parse("<root><item>hello</item></root>")
+let val = xml.query(doc, "root.item")
+writ(val.text)
 ```
 
 ### REPL commands
@@ -155,6 +195,8 @@ let person = {"name": "Alice", "age": 30}
 # String interpolation
 let greeting = f"Hello, {name}! You have {len(nums)} items."
 ```
+
+Canonical literals are `tru`, `fals`, `nul`. Compatibility aliases `true`, `false`, `null` are also accepted by the lexer.
 
 ### Operators
 
@@ -306,7 +348,7 @@ dog.fetch("ball") # Rex fetches the ball!
 try {
     let result = risky_operation()
     writ(result)
-} catch err {
+} catch (err) {
     writ(f"Error caught: {err}")
 } finally {
     writ("Always runs")
@@ -315,7 +357,7 @@ try {
 # Throw an error
 def divide(a, b) {
     iff b == 0 {
-        thr "Division by zero"
+        throw "Division by zero"
     }
     retrun a / b
 }
@@ -327,10 +369,10 @@ def divide(a, b) {
 let status = 404
 
 match status {
-    case 200 { writ("OK") }
-    case 404 { writ("Not Found") }
-    case 500 { writ("Server Error") }
-    default  { writ(f"Unknown: {status}") }
+    200 => { writ("OK") }
+    404 => { writ("Not Found") }
+    500 => { writ("Server Error") }
+    _ => { writ(f"Unknown: {status}") }
 }
 ```
 
@@ -349,8 +391,10 @@ let data = json.parse('{"key": "value"}')
 
 ```dgm
 imprt math
+imprt math as m
 math.sin(math.PI / 2)       # 1.0
 math.sqrt(16)               # 4.0
+m.sqrt(9)                   # 3.0
 math.pow(2, 10)             # 1024
 math.random()               # 0.0..1.0
 math.floor(3.7)             # 3
@@ -493,20 +537,20 @@ let server = net.listen("0.0.0.0", 9000)
 
 ```dgm
 imprt time
-let ts  = time.now()                        # unix ms
-let fmt = time.format(ts, "%Y-%m-%d %H:%M:%S")
-let day = time.local_date()
-time.sleep(500)                             # ms
+let ts_sec = time.now()                              # unix seconds
+let ts_ms  = time.now_ms()                           # unix milliseconds
+let fmt    = time.format(ts_sec, "%Y-%m-%d %H:%M:%S")
+let parsed = time.parse("2026-04-05 19:00:00", "%Y-%m-%d %H:%M:%S")
+let delta  = time.elapsed(ts_ms)
 ```
 
 ### thread
 
 ```dgm
 imprt thread
-let h = thread.spawn(|| {
-    writ("Running in background")
-})
-thread.join(h)
+let cpus = thread.available_cpus()
+thread.sleep(500)
+writ(cpus)
 ```
 
 ### xml
@@ -516,6 +560,7 @@ imprt xml
 let doc = xml.parse("<root><item>hello</item></root>")
 let str = xml.stringify(doc)
 let val = xml.query(doc, "root.item")
+writ(val.text)
 ```
 
 ### security
@@ -584,7 +629,7 @@ Parser (parser.rs)        — recursive descent, pratt-style precedence
 Interpreter (interpreter.rs)
     │  ├── exec_stmt() — statement evaluation
     │  ├── eval_expr() — expression evaluation
-    │  ├── call_function() — closure calls
+    │  ├── call_callable() — unified callable dispatch
     │  └── do_import() — lazy module loading
     │
     ├── Environment (environment.rs)
@@ -694,57 +739,42 @@ cargo test test_fs_sandbox_violation -- --test-threads=1
 
 # Check compilation without running
 cargo check
+
+# Rebuild generated docs from executable examples
+node ../scripts/build_docs.js
 ```
 
-**Test coverage (17 tests):**
+Test suites are organized around language contracts instead of ad-hoc unit checks:
 
-| Test | Description |
-|---|---|
-| `test_normalize_path` | Path normalization correctness |
-| `test_sandbox_blocks_escape` | `..` traversal blocked by sandbox |
-| `test_fs_denied` | `allow_fs=false` blocks all FS ops |
-| `test_exec_denied` | `allow_exec=false` blocks exec |
-| `test_net_denied` | `allow_net=false` blocks net |
-| `test_host_whitelist` | Host whitelist allows/blocks |
-| `test_sandbox_path_inside` | Paths inside sandbox allowed |
-| `test_sandbox_path_escape_blocked` | Paths outside sandbox blocked |
-| `test_fs_blocked_when_disabled` | FS gate enforcement |
-| `test_exec_blocked_when_disabled` | Exec gate enforcement |
-| `test_fs_write_read_delete_cycle` | Full write → read → exists → delete |
-| `test_fs_append` | Append to existing file |
-| `test_fs_list` | Directory listing |
-| `test_fs_sandbox_violation` | Sandbox escape via absolute path |
-| `test_os_exec_enabled` | `os.exec("echo hello")` captures stdout |
-| `test_os_exec_blocked` | Exec blocked when policy disallows |
-| `test_os_cwd_chdir` | cwd/chdir roundtrip |
+- `src/*` unit tests cover lexer aliases, security policy, stdlib behavior, and XML traversal.
+- [`../tests/conformance`](/home/danggiaminh/Downloads/dgm-source/tests/conformance) locks lexer, parser, runtime, import, and error behavior behind versioned snapshots.
+- [`../tests/golden`](/home/danggiaminh/Downloads/dgm-source/tests/golden) captures end-to-end scenarios for syntax, control flow, OOP, modules, and runtime failures.
+- [`../tests/examples`](/home/danggiaminh/Downloads/dgm-source/tests/examples) are executable documentation examples and fail CI when docs drift from the runtime.
 
 ---
 
 ## License
 
-```
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
 Copyright 2026 Đặng Gia Minh
 
-Licensed under the Apache License, Version Alpha_Major_1 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-    http://www.apache.org/licenses/LICENSE-2.0
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```
-
-This project is licensed under the **Apache License 2.0**.
-See the full license text at: https://www.apache.org/licenses/LICENSE-2.0
+See the full license text at: ../LICENSE
 
 ---
 
 <div align="center">
 
-Built with in Rust · Created by **Đặng Gia Minh** · Apache 2.0
+Interpreter: Rust · Created by **Đặng Gia Minh** · GPL-3.0
 
 </div>

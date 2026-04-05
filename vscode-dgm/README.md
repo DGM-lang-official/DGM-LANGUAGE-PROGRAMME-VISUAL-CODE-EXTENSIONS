@@ -4,29 +4,37 @@ Official VSCode extension for the **DGM Programming Language** — a dynamically
 
 ## Features
 
-✅ **Syntax Highlighting**
+**Syntax Highlighting**
 - Keywords, operators, strings, numbers, comments
 - F-string interpolation support
 - Function definitions and calls
 
-✅ **Language Configuration**
+**Editor Navigation**
+- Static hover for common builtins, module calls, and DGM error codes
+- Same-file go-to-definition for `def`, `cls`, and `let` bindings
+- Document symbols for functions and classes
+
+**Language Configuration**
 - Auto-closing brackets and quotes
 - Comment formatting
 - Indentation rules
 - Multi-line support
 
-✅ **Code Snippets**
+**Code Snippets**
 - Common language constructs (if, while, for, functions)
 - HTTP requests and server setup
 - JSON parsing and serialization
 - Error handling patterns
 
-✅ **File Association**
+**File Association**
 - Automatically associates `.dgm` files with DGM language
 
-✅ **Commands**
-- `Run DGM File` — Execute current `.dgm` file
-- `Show DGM Version` — Display installed DGM version
+**Commands**
+<!-- GENERATED:VSCODE_COMMANDS:START -->
+- `Run DGM File` (`dgm.run`) — Execute current `.dgm` file
+- `Validate DGM File` (`dgm.validate`) — Validate syntax and surface diagnostics
+- `Show DGM Version` (`dgm.version`) — Display installed DGM version
+<!-- GENERATED:VSCODE_COMMANDS:END -->
 
 ## Installation
 
@@ -40,7 +48,7 @@ Official VSCode extension for the **DGM Programming Language** — a dynamically
 ```bash
 git clone https://github.com/danggiaminh/dgm-source.git
 cd vscode-dgm
-vsce package
+npx @vscode/vsce package --no-dependencies
 # Install the .vsix file in VSCode
 ```
 
@@ -51,7 +59,8 @@ vsce package
   ```bash
   cargo install dgm
   # or build from source
-  cargo build --release -C dgm
+  cd ../dgm
+  cargo build --release
   ```
 
 ## Quick Start
@@ -63,9 +72,20 @@ vsce package
    ```
 
 2. Run the file:
-   - Press `Ctrl+Alt+R` / `Cmd+Alt+R` to run
-   - Or use command palette: `DGM: Run DGM File`
+   - Use command palette: `DGM: Run DGM File`
    - Or terminal: `dgm run hello.dgm`
+
+3. Validate the file:
+   - Use command palette: `DGM: Validate DGM File`
+   - Opening a `.dgm` file triggers validation automatically
+   - Editing a `.dgm` file refreshes inline diagnostics with a short debounce
+   - Saving a `.dgm` file also forces a fresh validation pass
+   - Or terminal: `dgm validate hello.dgm`
+
+4. Navigate the file:
+   - Hover on builtins like `map`, `json.parse`, or `E100`
+   - Use `Go to Definition` on same-file `def`, `cls`, and `let` bindings
+   - Open `Outline` / `Go to Symbol in Editor` for function and class symbols
 
 ## Syntax Example
 
@@ -75,7 +95,7 @@ vsce package
 # Variables
 let x = 42
 let s = "hello"
-let flag = tru
+let flag = tru  # alias: true
 
 # Functions
 def add(a, b) {
@@ -90,7 +110,7 @@ iff (x > 0) {
 }
 
 # Loops
-fr (i in [1, 2, 3]) {
+fr i in [1, 2, 3] {
   writ(i)
 }
 
@@ -114,23 +134,27 @@ try {
 
 ## Available Modules
 
+<!-- GENERATED:MODULE_BULLETS:START -->
 - **math** — sqrt, sin, cos, tan, random, ceil, floor, abs, min, max, pow, log
-- **io** — read_file, write_file, read_dir, mkdir
+- **io** — read_file, write_file, append_file, list_dir, mkdir, rename, copy
 - **fs** — read, write, append, delete, list, exists (sandboxed)
-- **os** — exec, get_env, platform, sleep
+- **os** — exec, spawn, run, run_timeout, env, platform, cwd, chdir
 - **json** — parse, stringify
-- **http** — get, post, serve
-- **crypto** — sha256, md5, base64_encode, base64_decode, hmac_sha256
+- **http** — get, post, request, serve
+- **crypto** — sha256, md5, base64_encode, base64_decode, random_bytes
 - **regex** — match, split, replace, find_all
 - **net** — tcp_connect, tcp_listen
-- **time** — now, timestamp, strftime, sleep
-- **thread** — spawn, join
-- **xml** — parse, stringify
+- **time** — now, now_ms, format, parse, elapsed
+- **thread** — sleep, available_cpus
+- **xml** — parse, stringify, query
+<!-- GENERATED:MODULE_BULLETS:END -->
 
 ## Language Features
 
 ### Keywords (Stable @ v0.2.0)
 `let`, `def`, `cls`, `new`, `ths`, `in`, `imprt`, `writ`, `iff`, `elseif`, `els`, `fr`, `whl`, `brk`, `cont`, `retrun`, `try`, `catch`, `finally`, `throw`, `match`, `and`, `or`, `not`, `tru`, `fals`, `nul`, `extends`, `lam`
+
+Canonical literals remain `tru`, `fals`, `nul`. Compatibility aliases `true`, `false`, `null` are also accepted.
 
 ### Operators
 Arithmetic: `+`, `-`, `*`, `/`, `%`, `**`  
@@ -140,8 +164,8 @@ Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
 Assignment: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
 
 ### Data Types
-- **Boolean**: `tru`, `fals`
-- **Null**: `nul`
+- **Boolean**: `tru`, `fals` with `true`, `false` aliases
+- **Null**: `nul` with `null` alias
 - **Number**: `42`, `3.14`
 - **String**: `"hello"`
 - **Array**: `[1, 2, 3]`
@@ -166,6 +190,12 @@ export PATH="./target/release:$PATH"
 1. Make sure file has `.dgm` extension
 2. Reload VSCode window: `Ctrl+Shift+P` → "Developer: Reload Window"
 
+### Go-to-definition did not jump
+Navigation is intentionally lightweight in v0.2.0:
+1. Definitions are same-file only
+2. Regex scanning covers `def`, `cls`, and `let`
+3. Cross-file symbol resolution requires future LSP work
+
 ### Snippets not showing
 1. Start typing a snippet prefix (e.g., "def", "iff", "lam")
 2. Snippets appear in autocomplete menu
@@ -186,7 +216,7 @@ Issues and pull requests welcome:
 
 ## License
 
-Apache License 2.0 — See [LICENSE](../LICENSE)
+GNU General Public License v3.0 (GPL-3.0) — See [LICENSE](./LICENSE)
 
 ## Credits
 

@@ -1,0 +1,91 @@
+{
+  "cliCommands": [
+    {
+      "description": "Run a DGM script",
+      "command": "dgm run script.dgm"
+    },
+    {
+      "description": "Validate syntax without executing",
+      "command": "dgm validate script.dgm"
+    },
+    {
+      "description": "Start interactive REPL",
+      "command": "dgm repl"
+    },
+    {
+      "description": "Show version",
+      "command": "dgm version"
+    },
+    {
+      "description": "Show help",
+      "command": "dgm help"
+    }
+  ],
+  "vscodeCommands": [
+    {
+      "title": "Run DGM File",
+      "id": "dgm.run",
+      "description": "Execute current `.dgm` file"
+    },
+    {
+      "title": "Validate DGM File",
+      "id": "dgm.validate",
+      "description": "Validate syntax and surface diagnostics"
+    },
+    {
+      "title": "Show DGM Version",
+      "id": "dgm.version",
+      "description": "Display installed DGM version"
+    }
+  ],
+  "modules": [
+    {
+      "name": "math",
+      "summary": "sqrt, sin, cos, tan, random, ceil, floor, abs, min, max, pow, log"
+    },
+    {
+      "name": "io",
+      "summary": "read_file, write_file, append_file, list_dir, mkdir, rename, copy"
+    },
+    {
+      "name": "fs",
+      "summary": "read, write, append, delete, list, exists (sandboxed)"
+    },
+    {
+      "name": "os",
+      "summary": "exec, spawn, run, run_timeout, env, platform, cwd, chdir"
+    },
+    {
+      "name": "json",
+      "summary": "parse, stringify"
+    },
+    {
+      "name": "http",
+      "summary": "get, post, request, serve"
+    },
+    {
+      "name": "crypto",
+      "summary": "sha256, md5, base64_encode, base64_decode, random_bytes"
+    },
+    {
+      "name": "regex",
+      "summary": "match, split, replace, find_all"
+    },
+    {
+      "name": "net",
+      "summary": "tcp_connect, tcp_listen"
+    },
+    {
+      "name": "time",
+      "summary": "now, now_ms, format, parse, elapsed"
+    },
+    {
+      "name": "thread",
+      "summary": "sleep, available_cpus"
+    },
+    {
+      "name": "xml",
+      "summary": "parse, stringify, query"
+    }
+  ]
+}

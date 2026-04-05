@@ -1,0 +1,4 @@
+writ("b:start")
+imprt a
+let b_done = tru
+writ("b:end")

@@ -1,0 +1,8 @@
+def recur(n) {
+  iff (n == 0) {
+    undefined_var
+  }
+  retrun recur(n - 1)
+}
+
+recur(3)

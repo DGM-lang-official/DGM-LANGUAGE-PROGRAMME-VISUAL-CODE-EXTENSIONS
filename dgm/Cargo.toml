@@ -5,7 +5,7 @@ edition = "2021"
 description = "DGM Programming Language — a complete interpreted language"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = { version = "1", features = ["derive", "rc"] }
 serde_json = "1"
 itoa = "1"
 ryu = "1"

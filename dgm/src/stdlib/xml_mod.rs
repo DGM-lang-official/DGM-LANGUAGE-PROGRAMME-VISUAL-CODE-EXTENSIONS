@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::interpreter::DgmValue;
+use crate::interpreter::{DgmValue, NativeFunction};
 use crate::error::DgmError;
-use quick_xml::events::{Event, BytesStart, BytesEnd, BytesText};
+use quick_xml::events::{Event, BytesStart};
 use quick_xml::Reader;
-use quick_xml::Writer;
 
 const MAX_DEPTH: usize = 64;
 
@@ -14,13 +13,14 @@ pub fn module() -> HashMap<String, DgmValue> {
     let fns: &[(&str, fn(Vec<DgmValue>) -> Result<DgmValue, DgmError>)] = &[
         ("parse", xml_parse),
         ("stringify", xml_stringify),
+        ("query", xml_query),
     ];
     for (name, func) in fns {
         m.insert(
             name.to_string(),
             DgmValue::NativeFunction {
                 name: format!("xml.{}", name),
-                func: *func,
+                func: NativeFunction::simple(*func),
             },
         );
     }
@@ -271,7 +271,96 @@ fn write_node(buf: &mut Vec<u8>, val: &DgmValue, depth: usize) -> Result<(), Dgm
     Ok(())
 }
 
+// ─── xml.query(node, path) → Map | Null ───
+
+fn xml_query(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
+    match (a.first(), a.get(1)) {
+        (Some(node @ DgmValue::Map(_)), Some(DgmValue::Str(path))) => {
+            let mut current = node.clone();
+            let mut segments: Vec<&str> = path.split('.').filter(|segment| !segment.is_empty()).collect();
+
+            if segments.is_empty() {
+                return Ok(current);
+            }
+
+            if node_tag(&current).as_deref() == Some(segments[0]) {
+                segments.remove(0);
+            }
+
+            for segment in segments {
+                let Some(next) = find_child_by_tag(&current, segment) else {
+                    return Ok(DgmValue::Null);
+                };
+                current = next;
+            }
+
+            Ok(current)
+        }
+        _ => Err(rt("xml.query(node, path) required")),
+    }
+}
+
+fn node_tag(node: &DgmValue) -> Option<String> {
+    match node {
+        DgmValue::Map(map) => match map.borrow().get("tag") {
+            Some(DgmValue::Str(tag)) => Some(tag.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn find_child_by_tag(node: &DgmValue, tag: &str) -> Option<DgmValue> {
+    match node {
+        DgmValue::Map(map) => match map.borrow().get("children") {
+            Some(DgmValue::List(children)) => children.borrow().iter().find_map(|child| {
+                if node_tag(child).as_deref() == Some(tag) {
+                    Some(child.clone())
+                } else {
+                    None
+                }
+            }),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 #[inline]
 fn rt(msg: &str) -> DgmError {
-    DgmError::RuntimeError { msg: msg.into() }
+    DgmError::runtime(msg)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_doc(xml: &str) -> DgmValue {
+        xml_parse(vec![DgmValue::Str(xml.into())]).unwrap()
+    }
+
+    #[test]
+    fn query_returns_root_and_nested_child() {
+        let doc = parse_doc("<root><item>hello</item><other>world</other></root>");
+
+        let root = xml_query(vec![doc.clone(), DgmValue::Str("root".into())]).unwrap();
+        assert!(matches!(root, DgmValue::Map(_)));
+
+        let item = xml_query(vec![doc, DgmValue::Str("root.item".into())]).unwrap();
+        match item {
+            DgmValue::Map(node) => {
+                let map = node.borrow();
+                assert!(matches!(map.get("tag"), Some(DgmValue::Str(tag)) if tag == "item"));
+                assert!(matches!(map.get("text"), Some(DgmValue::Str(text)) if text == "hello"));
+            }
+            other => panic!("expected xml node map, got {}", other),
+        }
+    }
+
+    #[test]
+    fn query_returns_null_for_missing_path() {
+        let doc = parse_doc("<root><item>hello</item></root>");
+        let result = xml_query(vec![doc, DgmValue::Str("root.missing".into())]).unwrap();
+        assert!(matches!(result, DgmValue::Null));
+    }
 }

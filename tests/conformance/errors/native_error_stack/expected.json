@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "input": "def crash() {\n  push(1, 2)\n}\n\ncrash()\n",
+  "tokens": null,
+  "ast": null,
+  "status": 1,
+  "stdout": "",
+  "stderr": "[E199] push(list, value) required\n --> input.dgm:2:3\n  |\n2 |   push(1, 2)\n  |   ^\nStack trace:\n  at push (input.dgm:2:3)\n  at crash (input.dgm:5:1)\n",
+  "error": {
+    "code": "E199",
+    "message": "push(list, value) required",
+    "span": {
+      "file": "input.dgm",
+      "line": 2,
+      "col": 3
+    },
+    "stack": [
+      {
+        "function": "push",
+        "span": {
+          "file": "input.dgm",
+          "line": 2,
+          "col": 3
+        }
+      },
+      {
+        "function": "crash",
+        "span": {
+          "file": "input.dgm",
+          "line": 5,
+          "col": 1
+        }
+      }
+    ]
+  }
+}

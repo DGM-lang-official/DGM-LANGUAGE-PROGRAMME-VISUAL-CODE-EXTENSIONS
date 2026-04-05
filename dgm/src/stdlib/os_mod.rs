@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Mutex, OnceLock};
-use crate::interpreter::DgmValue;
+use crate::interpreter::{DgmValue, NativeFunction};
 use crate::error::DgmError;
 use super::security;
 
@@ -50,7 +50,7 @@ pub fn module() -> HashMap<String, DgmValue> {
             name.to_string(),
             DgmValue::NativeFunction {
                 name: format!("os.{}", name),
-                func: *func,
+                func: NativeFunction::simple(*func),
             },
         );
     }
@@ -338,10 +338,10 @@ fn extract_string_list(a: &[DgmValue], idx: usize) -> Result<Vec<String>, DgmErr
 
 #[inline]
 fn rt(ctx: &str, e: &dyn std::fmt::Display) -> DgmError {
-    DgmError::RuntimeError { msg: format!("{}: {}", ctx, e) }
+    DgmError::runtime(format!("{}: {}", ctx, e))
 }
 
 #[inline]
 fn rt_msg(msg: &str) -> DgmError {
-    DgmError::RuntimeError { msg: msg.into() }
+    DgmError::runtime(msg)
 }

@@ -1,0 +1,2 @@
+let value = 1 + 2 * 3
+let choice = true ? 10 : 20

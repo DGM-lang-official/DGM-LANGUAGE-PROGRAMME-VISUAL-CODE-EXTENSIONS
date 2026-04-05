@@ -1,0 +1,2 @@
+writ("loaded")
+let value = 1

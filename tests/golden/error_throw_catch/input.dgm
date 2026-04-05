@@ -1,0 +1,14 @@
+def divide(a, b) {
+  iff b == 0 {
+    throw "zero"
+  }
+  retrun a / b
+}
+
+try {
+  writ(divide(6, 0))
+} catch (err) {
+  writ(err)
+}
+
+writ(divide(6, 2))

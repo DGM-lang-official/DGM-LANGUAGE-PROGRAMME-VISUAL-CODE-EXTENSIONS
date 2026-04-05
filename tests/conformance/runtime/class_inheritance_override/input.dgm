@@ -1,0 +1,9 @@
+cls Animal {
+  def speak() { retrun "base" }
+}
+
+cls Dog extends Animal {
+  def speak() { retrun "woof" }
+}
+
+writ(new Dog().speak())

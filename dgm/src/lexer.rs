@@ -1,15 +1,33 @@
-use crate::error::DgmError;
+use crate::ast::Span;
+use crate::error::{DgmError, ErrorCode};
 use crate::token::{Token, TokenKind};
+use std::sync::Arc;
 
 pub struct Lexer {
     source: Vec<char>,
+    file: Arc<String>,
     pos: usize,
     line: usize,
+    col: usize,
 }
 
 impl Lexer {
     pub fn new(source: &str) -> Self {
-        Self { source: source.chars().collect(), pos: 0, line: 1 }
+        Self::with_file(source, Arc::new("<source>".to_string()))
+    }
+
+    pub fn with_file(source: &str, file: Arc<String>) -> Self {
+        Self::with_context(source, file, 1, 1)
+    }
+
+    pub fn with_context(source: &str, file: Arc<String>, line: usize, col: usize) -> Self {
+        Self {
+            source: source.chars().collect(),
+            file,
+            pos: 0,
+            line,
+            col,
+        }
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, DgmError> {
@@ -17,218 +35,305 @@ impl Lexer {
         while !self.is_at_end() {
             let ch = self.current();
             match ch {
-                ' ' | '\t' | '\r' => { self.advance(); }
+                ' ' | '\t' | '\r' => self.advance(),
                 '\n' => {
-                    tokens.push(Token::new(TokenKind::Newline, "\\n", self.line));
-                    self.line += 1;
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Newline, "\\n", line, col));
                     self.advance();
                 }
-                '#' => { while !self.is_at_end() && self.current() != '\n' { self.advance(); } }
-                '(' => { tokens.push(Token::new(TokenKind::LParen, "(", self.line)); self.advance(); }
-                ')' => { tokens.push(Token::new(TokenKind::RParen, ")", self.line)); self.advance(); }
-                '{' => { tokens.push(Token::new(TokenKind::LBrace, "{", self.line)); self.advance(); }
-                '}' => { tokens.push(Token::new(TokenKind::RBrace, "}", self.line)); self.advance(); }
-                '[' => { tokens.push(Token::new(TokenKind::LBracket, "[", self.line)); self.advance(); }
-                ']' => { tokens.push(Token::new(TokenKind::RBracket, "]", self.line)); self.advance(); }
-                ',' => { tokens.push(Token::new(TokenKind::Comma, ",", self.line)); self.advance(); }
-                ':' => { tokens.push(Token::new(TokenKind::Colon, ":", self.line)); self.advance(); }
-                ';' => { tokens.push(Token::new(TokenKind::Semicolon, ";", self.line)); self.advance(); }
-                '?' => { tokens.push(Token::new(TokenKind::Question, "?", self.line)); self.advance(); }
-                '~' => { tokens.push(Token::new(TokenKind::Tilde, "~", self.line)); self.advance(); }
-                '^' => { tokens.push(Token::new(TokenKind::Caret, "^", self.line)); self.advance(); }
+                '#' => {
+                    while !self.is_at_end() && self.current() != '\n' {
+                        self.advance();
+                    }
+                }
+                '(' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::LParen, "(", line, col));
+                    self.advance();
+                }
+                ')' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::RParen, ")", line, col));
+                    self.advance();
+                }
+                '{' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::LBrace, "{", line, col));
+                    self.advance();
+                }
+                '}' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::RBrace, "}", line, col));
+                    self.advance();
+                }
+                '[' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::LBracket, "[", line, col));
+                    self.advance();
+                }
+                ']' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::RBracket, "]", line, col));
+                    self.advance();
+                }
+                ',' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Comma, ",", line, col));
+                    self.advance();
+                }
+                ':' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Colon, ":", line, col));
+                    self.advance();
+                }
+                ';' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Semicolon, ";", line, col));
+                    self.advance();
+                }
+                '?' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Question, "?", line, col));
+                    self.advance();
+                }
+                '~' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Tilde, "~", line, col));
+                    self.advance();
+                }
+                '^' => {
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Caret, "^", line, col));
+                    self.advance();
+                }
                 '.' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '.' {
-                        tokens.push(Token::new(TokenKind::DotDot, "..", self.line));
+                        tokens.push(self.token(TokenKind::DotDot, "..", line, col));
                         self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Dot, ".", self.line));
+                        tokens.push(self.token(TokenKind::Dot, ".", line, col));
                     }
                 }
                 '&' => {
-                    tokens.push(Token::new(TokenKind::Ampersand, "&", self.line));
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Ampersand, "&", line, col));
                     self.advance();
                 }
                 '|' => {
-                    tokens.push(Token::new(TokenKind::Pipe, "|", self.line));
+                    let (line, col) = self.current_position();
+                    tokens.push(self.token(TokenKind::Pipe, "|", line, col));
                     self.advance();
                 }
                 '+' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::PlusEq, "+=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::PlusEq, "+=", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Plus, "+", self.line));
+                        tokens.push(self.token(TokenKind::Plus, "+", line, col));
                     }
                 }
                 '-' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::MinusEq, "-=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::MinusEq, "-=", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Minus, "-", self.line));
+                        tokens.push(self.token(TokenKind::Minus, "-", line, col));
                     }
                 }
                 '*' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '*' {
-                        tokens.push(Token::new(TokenKind::StarStar, "**", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::StarStar, "**", line, col));
+                        self.advance();
                     } else if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::StarEq, "*=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::StarEq, "*=", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Star, "*", self.line));
+                        tokens.push(self.token(TokenKind::Star, "*", line, col));
                     }
                 }
                 '/' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::SlashEq, "/=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::SlashEq, "/=", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Slash, "/", self.line));
+                        tokens.push(self.token(TokenKind::Slash, "/", line, col));
                     }
                 }
                 '%' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::PercentEq, "%=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::PercentEq, "%=", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Percent, "%", self.line));
+                        tokens.push(self.token(TokenKind::Percent, "%", line, col));
                     }
                 }
                 '=' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::EqEq, "==", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::EqEq, "==", line, col));
+                        self.advance();
                     } else if !self.is_at_end() && self.current() == '>' {
-                        tokens.push(Token::new(TokenKind::Arrow, "=>", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::Arrow, "=>", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Eq, "=", self.line));
+                        tokens.push(self.token(TokenKind::Eq, "=", line, col));
                     }
                 }
                 '!' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::BangEq, "!=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::BangEq, "!=", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Bang, "!", self.line));
+                        tokens.push(self.token(TokenKind::Bang, "!", line, col));
                     }
                 }
                 '<' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::LtEq, "<=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::LtEq, "<=", line, col));
+                        self.advance();
                     } else if !self.is_at_end() && self.current() == '<' {
-                        tokens.push(Token::new(TokenKind::ShiftLeft, "<<", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::ShiftLeft, "<<", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Lt, "<", self.line));
+                        tokens.push(self.token(TokenKind::Lt, "<", line, col));
                     }
                 }
                 '>' => {
+                    let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '=' {
-                        tokens.push(Token::new(TokenKind::GtEq, ">=", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::GtEq, ">=", line, col));
+                        self.advance();
                     } else if !self.is_at_end() && self.current() == '>' {
-                        tokens.push(Token::new(TokenKind::ShiftRight, ">>", self.line)); self.advance();
+                        tokens.push(self.token(TokenKind::ShiftRight, ">>", line, col));
+                        self.advance();
                     } else {
-                        tokens.push(Token::new(TokenKind::Gt, ">", self.line));
+                        tokens.push(self.token(TokenKind::Gt, ">", line, col));
                     }
                 }
                 'f' if self.peek_next() == Some('"') => {
-                    let t = self.lex_fstring()?;
-                    tokens.extend(t);
+                    let fstring_tokens = self.lex_fstring()?;
+                    tokens.extend(fstring_tokens);
                 }
-                '"' => { let t = self.lex_string()?; tokens.push(t); }
-                c if c.is_ascii_digit() => { let t = self.lex_number()?; tokens.push(t); }
-                c if c.is_alphabetic() || c == '_' => { let t = self.lex_ident(); tokens.push(t); }
+                '"' => tokens.push(self.lex_string()?),
+                c if c.is_ascii_digit() => tokens.push(self.lex_number()?),
+                c if c.is_alphabetic() || c == '_' => tokens.push(self.lex_ident()),
                 other => {
-                    return Err(DgmError::LexError {
-                        msg: format!("unexpected character '{}'", other),
-                        line: self.line,
-                    });
+                    let (line, col) = self.current_position();
+                    return Err(self.lex_error(format!("unexpected character '{}'", other), line, col));
                 }
             }
         }
-        tokens.push(Token::new(TokenKind::EOF, "", self.line));
+        tokens.push(self.token(TokenKind::EOF, "", self.line, self.col));
         Ok(tokens)
     }
 
     fn lex_string(&mut self) -> Result<Token, DgmError> {
-        let line = self.line;
-        self.advance(); // skip opening "
-        let mut s = String::new();
+        let (line, col) = self.current_position();
+        self.advance();
+        let mut value = String::new();
         while !self.is_at_end() && self.current() != '"' {
             if self.current() == '\\' {
                 self.advance();
                 if self.is_at_end() {
-                    return Err(DgmError::LexError { msg: "unterminated string escape".into(), line });
+                    return Err(self.lex_error("unterminated string escape", line, col));
                 }
                 match self.current() {
-                    'n' => s.push('\n'),
-                    't' => s.push('\t'),
-                    'r' => s.push('\r'),
-                    '\\' => s.push('\\'),
-                    '"' => s.push('"'),
-                    '0' => s.push('\0'),
-                    other => s.push(other),
+                    'n' => value.push('\n'),
+                    't' => value.push('\t'),
+                    'r' => value.push('\r'),
+                    '\\' => value.push('\\'),
+                    '"' => value.push('"'),
+                    '0' => value.push('\0'),
+                    other => value.push(other),
                 }
             } else {
-                s.push(self.current());
+                value.push(self.current());
             }
             self.advance();
         }
         if self.is_at_end() {
-            return Err(DgmError::LexError { msg: "unterminated string".into(), line });
+            return Err(self.lex_error("unterminated string", line, col));
         }
-        self.advance(); // skip closing "
-        Ok(Token::new(TokenKind::StringLit, s, line))
+        self.advance();
+        Ok(self.token(TokenKind::StringLit, value, line, col))
     }
 
-    /// Lex f-string: f"hello {expr} world"
-    /// Produces: FStringStart, StringLit, LBrace, <expr tokens>, RBrace, StringLit, ..., RParen
     fn lex_fstring(&mut self) -> Result<Vec<Token>, DgmError> {
-        let line = self.line;
-        self.advance(); // skip 'f'
-        self.advance(); // skip '"'
-        let mut tokens = vec![];
-        tokens.push(Token::new(TokenKind::FStringStart, "f\"", line));
+        let (line, col) = self.current_position();
+        self.advance();
+        self.advance();
 
+        let mut tokens = vec![self.token(TokenKind::FStringStart, "f\"", line, col)];
         let mut buf = String::new();
+        let mut buf_line = line;
+        let mut buf_col = col + 2;
+
         while !self.is_at_end() && self.current() != '"' {
             if self.current() == '{' {
-                // push accumulated string part
-                tokens.push(Token::new(TokenKind::StringLit, buf.clone(), line));
-                buf.clear();
-                tokens.push(Token::new(TokenKind::LBrace, "{", self.line));
-                self.advance(); // skip '{'
-                // lex tokens inside {} until matching '}'
+                if !buf.is_empty() {
+                    tokens.push(self.token(TokenKind::StringLit, buf.clone(), buf_line, buf_col));
+                    buf.clear();
+                }
+                let (brace_line, brace_col) = self.current_position();
+                tokens.push(self.token(TokenKind::LBrace, "{", brace_line, brace_col));
+                self.advance();
+
                 let mut depth = 1;
+                let inner_line = self.line;
+                let inner_col = self.col;
                 let mut inner_src = String::new();
                 while !self.is_at_end() && depth > 0 {
-                    if self.current() == '{' { depth += 1; }
+                    if self.current() == '{' {
+                        depth += 1;
+                    }
                     if self.current() == '}' {
                         depth -= 1;
-                        if depth == 0 { break; }
+                        if depth == 0 {
+                            break;
+                        }
                     }
                     inner_src.push(self.current());
                     self.advance();
                 }
-                // Lex inner expression
-                let mut inner_lexer = Lexer::new(&inner_src);
+
+                let mut inner_lexer = Lexer::with_context(&inner_src, Arc::clone(&self.file), inner_line, inner_col);
                 let inner_tokens = inner_lexer.tokenize()?;
-                // push all except EOF
-                for t in inner_tokens {
-                    if t.kind != TokenKind::EOF {
-                        tokens.push(Token { kind: t.kind, lexeme: t.lexeme, line: self.line });
+                for token in inner_tokens {
+                    if token.kind != TokenKind::EOF {
+                        tokens.push(token);
                     }
                 }
+
                 if !self.is_at_end() && self.current() == '}' {
-                    tokens.push(Token::new(TokenKind::RBrace, "}", self.line));
+                    let (rbrace_line, rbrace_col) = self.current_position();
+                    tokens.push(self.token(TokenKind::RBrace, "}", rbrace_line, rbrace_col));
                     self.advance();
                 }
+
+                buf_line = self.line;
+                buf_col = self.col;
             } else if self.current() == '\\' {
                 self.advance();
                 if self.is_at_end() {
-                    return Err(DgmError::LexError { msg: "unterminated f-string escape".into(), line });
+                    return Err(self.lex_error("unterminated f-string escape", line, col));
                 }
                 match self.current() {
                     'n' => buf.push('\n'),
@@ -245,140 +350,211 @@ impl Lexer {
                 self.advance();
             }
         }
+
         if !buf.is_empty() {
-            tokens.push(Token::new(TokenKind::StringLit, buf, line));
+            tokens.push(self.token(TokenKind::StringLit, buf, buf_line, buf_col));
         }
         if self.is_at_end() {
-            return Err(DgmError::LexError { msg: "unterminated f-string".into(), line });
+            return Err(self.lex_error("unterminated f-string", line, col));
         }
-        self.advance(); // skip closing "
-        tokens.push(Token::new(TokenKind::RParen, ")", line)); // sentinel for parser
+        self.advance();
+        tokens.push(self.token(TokenKind::RParen, ")", line, col));
         Ok(tokens)
     }
 
     fn lex_number(&mut self) -> Result<Token, DgmError> {
-        let line = self.line;
-        let mut s = String::new();
+        let (line, col) = self.current_position();
+        let mut value = String::new();
 
-        // Hex: 0x...
-        if self.current() == '0' && self.peek_next().map(|c| c == 'x' || c == 'X').unwrap_or(false) {
-            s.push(self.current()); self.advance(); // '0'
-            s.push(self.current()); self.advance(); // 'x'
+        if self.current() == '0' && self.peek_next().is_some_and(|c| c == 'x' || c == 'X') {
+            value.push(self.current());
+            self.advance();
+            value.push(self.current());
+            self.advance();
             while !self.is_at_end() && self.current().is_ascii_hexdigit() {
-                s.push(self.current());
+                value.push(self.current());
                 self.advance();
             }
-            let val = i64::from_str_radix(&s[2..], 16).map_err(|_| DgmError::LexError {
-                msg: format!("invalid hex '{}'", s), line
-            })?;
-            return Ok(Token::new(TokenKind::IntLit, val.to_string(), line));
+            let parsed = i64::from_str_radix(&value[2..], 16)
+                .map_err(|_| self.lex_error(format!("invalid hex '{}'", value), line, col))?;
+            return Ok(self.token(TokenKind::IntLit, parsed.to_string(), line, col));
         }
 
-        // Binary: 0b...
-        if self.current() == '0' && self.peek_next().map(|c| c == 'b' || c == 'B').unwrap_or(false) {
-            s.push(self.current()); self.advance();
-            s.push(self.current()); self.advance();
-            while !self.is_at_end() && (self.current() == '0' || self.current() == '1') {
-                s.push(self.current());
+        if self.current() == '0' && self.peek_next().is_some_and(|c| c == 'b' || c == 'B') {
+            value.push(self.current());
+            self.advance();
+            value.push(self.current());
+            self.advance();
+            while !self.is_at_end() && matches!(self.current(), '0' | '1') {
+                value.push(self.current());
                 self.advance();
             }
-            let val = i64::from_str_radix(&s[2..], 2).map_err(|_| DgmError::LexError {
-                msg: format!("invalid binary '{}'", s), line
-            })?;
-            return Ok(Token::new(TokenKind::IntLit, val.to_string(), line));
+            let parsed = i64::from_str_radix(&value[2..], 2)
+                .map_err(|_| self.lex_error(format!("invalid binary '{}'", value), line, col))?;
+            return Ok(self.token(TokenKind::IntLit, parsed.to_string(), line, col));
         }
 
-        // Octal: 0o...
-        if self.current() == '0' && self.peek_next().map(|c| c == 'o' || c == 'O').unwrap_or(false) {
-            s.push(self.current()); self.advance();
-            s.push(self.current()); self.advance();
+        if self.current() == '0' && self.peek_next().is_some_and(|c| c == 'o' || c == 'O') {
+            value.push(self.current());
+            self.advance();
+            value.push(self.current());
+            self.advance();
             while !self.is_at_end() && self.current().is_digit(8) {
-                s.push(self.current());
+                value.push(self.current());
                 self.advance();
             }
-            let val = i64::from_str_radix(&s[2..], 8).map_err(|_| DgmError::LexError {
-                msg: format!("invalid octal '{}'", s), line
-            })?;
-            return Ok(Token::new(TokenKind::IntLit, val.to_string(), line));
+            let parsed = i64::from_str_radix(&value[2..], 8)
+                .map_err(|_| self.lex_error(format!("invalid octal '{}'", value), line, col))?;
+            return Ok(self.token(TokenKind::IntLit, parsed.to_string(), line, col));
         }
 
-        // Decimal
         while !self.is_at_end() && (self.current().is_ascii_digit() || self.current() == '_') {
-            if self.current() != '_' { s.push(self.current()); }
+            if self.current() != '_' {
+                value.push(self.current());
+            }
             self.advance();
         }
-        if !self.is_at_end() && self.current() == '.' && self.peek_next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
-            s.push('.');
+
+        if !self.is_at_end() && self.current() == '.' && self.peek_next().is_some_and(|c| c.is_ascii_digit()) {
+            value.push('.');
             self.advance();
             while !self.is_at_end() && (self.current().is_ascii_digit() || self.current() == '_') {
-                if self.current() != '_' { s.push(self.current()); }
+                if self.current() != '_' {
+                    value.push(self.current());
+                }
                 self.advance();
             }
-            // Scientific notation
-            if !self.is_at_end() && (self.current() == 'e' || self.current() == 'E') {
-                s.push('e');
+            if !self.is_at_end() && matches!(self.current(), 'e' | 'E') {
+                value.push('e');
                 self.advance();
-                if !self.is_at_end() && (self.current() == '+' || self.current() == '-') {
-                    s.push(self.current());
+                if !self.is_at_end() && matches!(self.current(), '+' | '-') {
+                    value.push(self.current());
                     self.advance();
                 }
                 while !self.is_at_end() && self.current().is_ascii_digit() {
-                    s.push(self.current());
+                    value.push(self.current());
                     self.advance();
                 }
             }
-            Ok(Token::new(TokenKind::FloatLit, s, line))
-        } else {
-            // Scientific notation on integer
-            if !self.is_at_end() && (self.current() == 'e' || self.current() == 'E') {
-                s.push('e');
-                self.advance();
-                if !self.is_at_end() && (self.current() == '+' || self.current() == '-') {
-                    s.push(self.current());
-                    self.advance();
-                }
-                while !self.is_at_end() && self.current().is_ascii_digit() {
-                    s.push(self.current());
-                    self.advance();
-                }
-                Ok(Token::new(TokenKind::FloatLit, s, line))
-            } else {
-                Ok(Token::new(TokenKind::IntLit, s, line))
-            }
+            return Ok(self.token(TokenKind::FloatLit, value, line, col));
         }
+
+        if !self.is_at_end() && matches!(self.current(), 'e' | 'E') {
+            value.push('e');
+            self.advance();
+            if !self.is_at_end() && matches!(self.current(), '+' | '-') {
+                value.push(self.current());
+                self.advance();
+            }
+            while !self.is_at_end() && self.current().is_ascii_digit() {
+                value.push(self.current());
+                self.advance();
+            }
+            return Ok(self.token(TokenKind::FloatLit, value, line, col));
+        }
+
+        Ok(self.token(TokenKind::IntLit, value, line, col))
     }
 
     fn lex_ident(&mut self) -> Token {
-        let line = self.line;
-        let mut s = String::new();
+        let (line, col) = self.current_position();
+        let mut ident = String::new();
         while !self.is_at_end() && (self.current().is_alphanumeric() || self.current() == '_') {
-            s.push(self.current());
+            ident.push(self.current());
             self.advance();
         }
-        let kind = match s.as_str() {
-            "imprt" => TokenKind::Imprt, "writ" => TokenKind::Writ,
-            "def" => TokenKind::Def, "retrun" => TokenKind::Retrun,
-            "iff" => TokenKind::Iff, "elseif" => TokenKind::Elseif,
-            "els" => TokenKind::Els, "fr" => TokenKind::Fr,
-            "whl" => TokenKind::Whl, "brk" => TokenKind::Brk,
-            "cont" => TokenKind::Cont, "tru" => TokenKind::Tru,
-            "fals" => TokenKind::Fals, "nul" => TokenKind::Nul,
-            "let" => TokenKind::Let, "and" => TokenKind::And,
-            "or" => TokenKind::Or, "not" => TokenKind::Not,
-            "cls" => TokenKind::Cls, "new" => TokenKind::New,
-            "ths" => TokenKind::Ths, "in" => TokenKind::In,
-            // New keywords
-            "try" => TokenKind::Try, "catch" => TokenKind::Catch,
-            "finally" => TokenKind::Finally, "throw" => TokenKind::Throw,
-            "match" => TokenKind::Match, "extends" => TokenKind::Extends,
+        let kind = match ident.as_str() {
+            "imprt" => TokenKind::Imprt,
+            "writ" => TokenKind::Writ,
+            "def" => TokenKind::Def,
+            "retrun" => TokenKind::Retrun,
+            "iff" => TokenKind::Iff,
+            "elseif" => TokenKind::Elseif,
+            "els" => TokenKind::Els,
+            "fr" => TokenKind::Fr,
+            "whl" => TokenKind::Whl,
+            "brk" => TokenKind::Brk,
+            "cont" => TokenKind::Cont,
+            "tru" | "true" => TokenKind::Tru,
+            "fals" | "false" => TokenKind::Fals,
+            "nul" | "null" => TokenKind::Nul,
+            "let" => TokenKind::Let,
+            "and" => TokenKind::And,
+            "or" => TokenKind::Or,
+            "not" => TokenKind::Not,
+            "cls" => TokenKind::Cls,
+            "new" => TokenKind::New,
+            "ths" => TokenKind::Ths,
+            "in" => TokenKind::In,
+            "try" => TokenKind::Try,
+            "catch" => TokenKind::Catch,
+            "finally" => TokenKind::Finally,
+            "throw" => TokenKind::Throw,
+            "match" => TokenKind::Match,
+            "extends" => TokenKind::Extends,
             "lam" => TokenKind::Lam,
             _ => TokenKind::Ident,
         };
-        Token::new(kind, s, line)
+        self.token(kind, ident, line, col)
     }
 
-    fn current(&self) -> char { self.source[self.pos] }
-    fn advance(&mut self) { self.pos += 1; }
-    fn is_at_end(&self) -> bool { self.pos >= self.source.len() }
-    fn peek_next(&self) -> Option<char> { self.source.get(self.pos + 1).copied() }
+    fn token(&self, kind: TokenKind, lexeme: impl Into<String>, line: usize, col: usize) -> Token {
+        Token::new(kind, lexeme, Arc::clone(&self.file), line, col)
+    }
+
+    fn lex_error(&self, message: impl Into<String>, line: usize, col: usize) -> DgmError {
+        DgmError::new(ErrorCode::LexError, message).with_span(Span::new(Arc::clone(&self.file), line, col))
+    }
+
+    fn current_position(&self) -> (usize, usize) {
+        (self.line, self.col)
+    }
+
+    fn current(&self) -> char {
+        self.source[self.pos]
+    }
+
+    fn advance(&mut self) {
+        let ch = self.source[self.pos];
+        self.pos += 1;
+        if ch == '\n' {
+            self.line += 1;
+            self.col = 1;
+        } else {
+            self.col += 1;
+        }
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.pos >= self.source.len()
+    }
+
+    fn peek_next(&self) -> Option<char> {
+        self.source.get(self.pos + 1).copied()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::token::TokenKind;
+
+    #[test]
+    fn tokenizes_literal_aliases() {
+        let mut lexer = Lexer::new("tru fals nul true false null");
+        let tokens = lexer.tokenize().unwrap();
+        let kinds: Vec<TokenKind> = tokens.into_iter().take(6).map(|token| token.kind).collect();
+
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::Tru,
+                TokenKind::Fals,
+                TokenKind::Nul,
+                TokenKind::Tru,
+                TokenKind::Fals,
+                TokenKind::Nul,
+            ]
+        );
+    }
 }

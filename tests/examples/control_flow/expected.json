@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "input": "let status = 2\nmatch status {\n  1 => { writ(\"uno\") }\n  2 => { writ(\"dos\") }\n  _ => { writ(\"fallback\") }\n}\n",
+  "tokens": null,
+  "ast": null,
+  "status": 0,
+  "stdout": "dos\n",
+  "stderr": "",
+  "error": null
+}

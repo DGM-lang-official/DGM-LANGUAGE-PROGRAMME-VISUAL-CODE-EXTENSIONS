@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "input": "cls Animal {\n  def speak() { retrun \"base\" }\n}\n\ncls Dog extends Animal {\n  def speak() { retrun \"woof\" }\n}\n\nwrit(new Dog().speak())\n",
+  "tokens": null,
+  "ast": null,
+  "status": 0,
+  "stdout": "woof\n",
+  "stderr": "",
+  "error": null
+}

@@ -27,22 +27,28 @@
   ```
 
 ### 1.3 Number Literals
-- **Integers**: `123`, `-456`, `0`
-- **Floats**: `3.14`, `-2.5`, `0.0`
-- **No scientific notation** (frozen as is)
+- **Integers**: `123`, `-456`, `0`, `0xFF`, `0b1010`, `0o755`
+- **Floats**: `3.14`, `-2.5`, `0.0`, `1e6`
+- **Digit separators**: `1_000_000`
 - **Example**:
   ```dgm
   let i = 42
   let f = 3.14
+  let mask = 0xFF
+  let big = 1e6
   ```
 
 ### 1.4 Boolean & Null
-- **Boolean literals**: `tru`, `fals` (not `true`/`false`)
-- **Null literal**: `nul`
+- **Canonical boolean literals**: `tru`, `fals`
+- **Compatibility boolean aliases**: `true`, `false`
+- **Canonical null literal**: `nul`
+- **Compatibility null alias**: `null`
 - **Example**:
   ```dgm
   let flag = tru
+  let fallback = true
   let nothing = nul
+  let empty = null
   ```
 
 ### 1.5 Identifiers
@@ -88,6 +94,11 @@
 
 **Constraint**: This set is frozen. No additions without major version bump.
 
+Compatibility aliases accepted by the lexer:
+- `true` → `tru`
+- `false` → `fals`
+- `null` → `nul`
+
 ---
 
 ## 3. OPERATOR PRECEDENCE & ASSOCIATIVITY
@@ -113,7 +124,7 @@ Stmt::Let { name, value }              // let x = expr
 Stmt::Writ(expr)                       // writ(expr)
 Stmt::If { cond, then_b, else_b }      // iff (cond) { ... } els { ... }
 Stmt::While { cond, body }             // whl (cond) { ... }
-Stmt::For { var, iter, body }          // fr (var in iter) { ... }
+Stmt::For { var, iter, body }          // fr var in iter { ... }
 Stmt::FuncDef { name, params, body }   // def name(a, b) { ... }
 Stmt::ClassDef { name, parent, body }  // cls Name { ... }
 Stmt::Return(expr)                     // retrun expr
@@ -122,7 +133,7 @@ Stmt::Continue                         // cont
 Stmt::TryCatch { try_b, catch_b, finally_b }  // try { ... } catch (e) { ... }
 Stmt::Throw(expr)                      // throw expr
 Stmt::Match { expr, arms }             // match expr { ... }
-Stmt::Imprt(name)                      // imprt "module" or imprt module
+Stmt::Imprt { name, alias }           // imprt "module", imprt module, imprt module as m
 Stmt::Expr(expr)                       // standalone expression
 ```
 
@@ -138,7 +149,7 @@ Expr::Unary { op, operand }            // -x, !flag
 Expr::Call { func, args }              // func(a, b)
 Expr::Index { object, index }          // arr[0], map["key"]
 Expr::Property { object, property }    // obj.field
-Expr::FuncLit { params, body }         // lam(a, b) { a + b }
+Expr::FuncLit { params, body }         // lam(a, b) => a + b
 Expr::ClassInstantiate { class, args } // new MyClass(x, y)
 Expr::Array(elements)                  // [1, 2, 3]
 Expr::Map(pairs)                       // {"key": value, ...}
@@ -170,20 +181,30 @@ DgmValue::NativeModule(HashMap<String, DgmValue>)
 All errors use standardized format:
 
 ```
-[ErrorType line N] message
+[E000] message
+ --> file.dgm:line:col
+  |
+1 | source line
+  | ^ 
 ```
 
 Types:
-- `[LexError line N]` — Tokenization failure
-- `[ParseError line N]` — Syntax parsing failure
-- `[RuntimeError]` — Runtime execution failure
-- `[ThrownError]` — User-thrown exception
-- `[ImportError]` — Module loading failure
+- `E001` — Tokenization failure
+- `E002` — Syntax parsing failure
+- `E003` — Runtime execution failure
+- `E004` — Uncaught user-thrown exception
+- `E005` — Module loading failure
+
+Lex and parse errors include a source span. Runtime/import errors currently keep the stable code/message header and omit the span when none is available.
 
 **Example**:
 ```
-[ParseError line 5] expected ')' found 'iff'
-[RuntimeError] undefined variable 'x'
+[E002] expected RParen, got 'iff'
+ --> file.dgm:5:12
+  |
+5 | iff (x > 0 {
+  |            ^
+[E003] undefined variable 'x'
 ```
 
 ---
@@ -211,14 +232,14 @@ whl (i < 10) {
 
 ### For Loop (Iterator)
 ```dgm
-fr (item in arr) {
+fr item in arr {
   writ(item)
 }
 ```
 
 ### Break/Continue
 ```dgm
-fr (i in [1,2,3,4,5]) {
+fr i in [1,2,3,4,5] {
   iff (i == 3) { brk }
   writ(i)
 }
@@ -253,12 +274,12 @@ def add(a, b) {
 
 ```dgm
 def name(param1, param2) {
-  # function body
+# function body
   retrun result
 }
 
 # Lambda (anonymous)
-let square = lam(x) { x * x }
+let square = lam(x) => x * x
 ```
 
 ---
@@ -310,6 +331,7 @@ imprt "json"
 
 # or
 imprt math
+imprt math as m
 ```
 
 Available modules: `math`, `io`, `fs`, `os`, `json`, `time`, `http`, `crypto`, `regex`, `net`, `thread`, `xml`, `security`

@@ -1,43 +1,36 @@
 {
-  "name": "dgm",
+  "name": "dgm-language",
   "displayName": "DGM Language Support",
-  "description": "Language support for DGM programming language — syntax highlighting, intellisense, and snippets",
+  "description": "Syntax highlighting, hover, same-file navigation, snippets, and run/validate commands for DGM",
   "version": "0.2.0",
   "publisher": "dgm-lang",
-  "license": "Apache-2.0",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DGM-lang-official/DGM-LANGUAGE-PROGRAMME-VISUAL-CODE-EXTENSIONS.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DGM-lang-official/DGM-LANGUAGE-PROGRAMME-VISUAL-CODE-EXTENSIONS/issues"
+  },
+  "homepage": "https://github.com/DGM-lang-official/DGM-LANGUAGE-PROGRAMME-VISUAL-CODE-EXTENSIONS#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": [
-    "Programming Languages",
-    "Snippets"
+  "categories": ["Programming Languages", "Snippets"],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:dgm",
+    "onCommand:dgm.run",
+    "onCommand:dgm.validate",
+    "onCommand:dgm.version"
   ],
-  "keywords": [
-    "dgm",
-    "programming-language",
-    "interpreter",
-    "rust"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/danggiaminh/dgm-source"
-  },
   "contributes": {
     "languages": [
       {
         "id": "dgm",
-        "aliases": [
-          "DGM",
-          "dgm"
-        ],
-        "extensions": [
-          ".dgm"
-        ],
-        "configuration": "./language-configuration.json",
-        "icon": {
-          "light": "./icons/dgm-light.svg",
-          "dark": "./icons/dgm-dark.svg"
-        }
+        "aliases": ["DGM", "dgm"],
+        "extensions": [".dgm"],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
@@ -57,20 +50,32 @@
       {
         "command": "dgm.run",
         "title": "Run DGM File",
-        "when": "resourceExtname == .dgm",
-        "category": "DGM"
+        "category": "DGM",
+        "enablement": "resourceExtname == .dgm"
       },
       {
         "command": "dgm.version",
         "title": "Show DGM Version",
         "category": "DGM"
+      },
+      {
+        "command": "dgm.validate",
+        "title": "Validate DGM File",
+        "category": "DGM",
+        "enablement": "resourceExtname == .dgm"
       }
-    ]
-  },
-  "main": "./extension.js",
-  "activationEvents": [
-    "onLanguage:dgm",
-    "onCommand:dgm.run",
-    "onCommand:dgm.version"
-  ]
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "dgm.run",
+          "when": "resourceExtname == .dgm"
+        },
+        {
+          "command": "dgm.validate",
+          "when": "resourceExtname == .dgm"
+        }
+      ]
+    }
+  }
 }

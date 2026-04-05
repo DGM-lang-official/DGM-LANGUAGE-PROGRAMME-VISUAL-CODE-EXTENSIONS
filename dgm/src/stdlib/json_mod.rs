@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::interpreter::DgmValue;
+use crate::interpreter::{DgmValue, NativeFunction};
 use crate::error::DgmError;
 
 // Static byte fragments — zero alloc, reused every call
@@ -19,7 +19,15 @@ pub fn module() -> HashMap<String, DgmValue> {
         ("parse", json_parse), ("stringify", json_stringify), ("pretty", json_pretty),
         ("raw_parts", json_raw_parts), ("stringify_bytes", json_stringify_bytes),
     ];
-    for (name, func) in fns { m.insert(name.to_string(), DgmValue::NativeFunction { name: format!("json.{}", name), func: *func }); }
+    for (name, func) in fns {
+        m.insert(
+            name.to_string(),
+            DgmValue::NativeFunction {
+                name: format!("json.{}", name),
+                func: NativeFunction::simple(*func),
+            },
+        );
+    }
     m
 }
 
@@ -102,11 +110,11 @@ fn write_value_bytes(buf: &mut Vec<u8>, val: &DgmValue) {
 fn json_raw_parts(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
     let key = match a.get(0) {
         Some(DgmValue::Str(k)) => k,
-        _ => return Err(DgmError::RuntimeError { msg: "json.raw_parts(key, value, ok?) required".into() }),
+        _ => return Err(DgmError::runtime("json.raw_parts(key, value, ok?) required")),
     };
     let value = match a.get(1) {
         Some(v) => v,
-        None => return Err(DgmError::RuntimeError { msg: "json.raw_parts(key, value, ok?) required".into() }),
+        None => return Err(DgmError::runtime("json.raw_parts(key, value, ok?) required")),
     };
     let ok = match a.get(2) {
         Some(DgmValue::Bool(b)) => *b,
@@ -147,7 +155,7 @@ fn json_stringify_bytes(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
             let s = unsafe { String::from_utf8_unchecked(buf) };
             Ok(DgmValue::Str(s))
         }
-        None => Err(DgmError::RuntimeError { msg: "json.stringify_bytes(val) required".into() }),
+        None => Err(DgmError::runtime("json.stringify_bytes(val) required")),
     }
 }
 
@@ -174,10 +182,11 @@ fn json_to_dgm(val: &serde_json::Value) -> DgmValue {
 fn json_parse(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
     match a.first() {
         Some(DgmValue::Str(s)) => {
-            let val: serde_json::Value = serde_json::from_str(s).map_err(|e| DgmError::RuntimeError { msg: format!("json.parse: {}", e) })?;
+            let val: serde_json::Value = serde_json::from_str(s)
+                .map_err(|e| DgmError::runtime(format!("json.parse: {}", e)))?;
             Ok(json_to_dgm(&val))
         }
-        _ => Err(DgmError::RuntimeError { msg: "json.parse(str) required".into() }),
+        _ => Err(DgmError::runtime("json.parse(str) required")),
     }
 }
 
@@ -190,7 +199,7 @@ fn json_stringify(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
             let s = unsafe { String::from_utf8_unchecked(buf) };
             Ok(DgmValue::Str(s))
         }
-        None => Err(DgmError::RuntimeError { msg: "json.stringify(val) required".into() }),
+        None => Err(DgmError::runtime("json.stringify(val) required")),
     }
 }
 
@@ -198,7 +207,7 @@ fn json_pretty(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
     match a.first() {
         // Pretty still uses serde for readability formatting
         Some(val) => { let j = dgm_to_json(val); Ok(DgmValue::Str(serde_json::to_string_pretty(&j).unwrap_or_default())) }
-        None => Err(DgmError::RuntimeError { msg: "json.pretty(val) required".into() }),
+        None => Err(DgmError::runtime("json.pretty(val) required")),
     }
 }
 

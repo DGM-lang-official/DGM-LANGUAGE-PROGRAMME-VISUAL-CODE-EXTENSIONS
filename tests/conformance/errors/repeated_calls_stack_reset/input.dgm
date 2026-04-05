@@ -1,0 +1,11 @@
+def fail() {
+  undefined_var
+}
+
+try {
+  fail()
+} catch (err) {
+  writ(err)
+}
+
+fail()

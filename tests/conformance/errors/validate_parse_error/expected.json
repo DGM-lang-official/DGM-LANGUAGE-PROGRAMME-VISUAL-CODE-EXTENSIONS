@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "input": "let broken = (\n",
+  "tokens": null,
+  "ast": null,
+  "status": 1,
+  "stdout": "",
+  "stderr": "[E301] unexpected token '\\n'\n --> input.dgm:1:15\n  |\n1 | let broken = (\n  |               ^\n",
+  "error": {
+    "code": "E301",
+    "message": "unexpected token '\\n'",
+    "span": {
+      "file": "input.dgm",
+      "line": 1,
+      "col": 15
+    },
+    "stack": []
+  }
+}

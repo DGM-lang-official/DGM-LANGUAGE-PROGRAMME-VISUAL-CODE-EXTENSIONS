@@ -15,7 +15,7 @@ vscode-dgm/
 ├── snippets/
 │   └── dgm.json                     # Code snippets (25+ templates)
 │
-└── LICENSE                          # Apache 2.0 license (symlink to ../LICENSE)
+└── LICENSE                          # GPL-3.0 license file
 ```
 
 ## Files Reference

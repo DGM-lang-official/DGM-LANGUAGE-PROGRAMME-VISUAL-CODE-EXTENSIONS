@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 use std::io::{Read, Write};
 use std::rc::Rc;
-use crate::interpreter::DgmValue;
+use crate::interpreter::{DgmValue, NativeFunction};
 use crate::error::DgmError;
 use super::security;
 
@@ -31,7 +31,7 @@ pub fn module() -> HashMap<String, DgmValue> {
             name.to_string(),
             DgmValue::NativeFunction {
                 name: format!("fs.{}", name),
-                func: *func,
+                func: NativeFunction::simple(*func),
             },
         );
     }
@@ -215,9 +215,7 @@ fn fs_metadata(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
 fn get_path(a: &[DgmValue], idx: usize, ctx: &str) -> Result<String, DgmError> {
     match a.get(idx) {
         Some(DgmValue::Str(s)) => Ok(s.clone()),
-        _ => Err(DgmError::RuntimeError {
-            msg: format!("{} required", ctx),
-        }),
+        _ => Err(DgmError::runtime(format!("{} required", ctx))),
     }
 }
 
@@ -226,9 +224,7 @@ fn get_str(a: &[DgmValue], idx: usize, ctx: &str) -> Result<String, DgmError> {
     match a.get(idx) {
         Some(DgmValue::Str(s)) => Ok(s.clone()),
         Some(v) => Ok(format!("{}", v)),
-        _ => Err(DgmError::RuntimeError {
-            msg: format!("{} required", ctx),
-        }),
+        _ => Err(DgmError::runtime(format!("{} required", ctx))),
     }
 }
 
@@ -240,22 +236,21 @@ fn get_byte_list(a: &[DgmValue], idx: usize, ctx: &str) -> Result<Vec<u8>, DgmEr
             for item in items.iter() {
                 match item {
                     DgmValue::Int(n) => bytes.push(*n as u8),
-                    _ => return Err(DgmError::RuntimeError {
-                        msg: format!("{}: list must contain ints (0-255)", ctx),
-                    }),
+                    _ => {
+                        return Err(DgmError::runtime(format!(
+                            "{}: list must contain ints (0-255)",
+                            ctx
+                        )))
+                    }
                 }
             }
             Ok(bytes)
         }
-        _ => Err(DgmError::RuntimeError {
-            msg: format!("{}: byte list required", ctx),
-        }),
+        _ => Err(DgmError::runtime(format!("{}: byte list required", ctx))),
     }
 }
 
 #[inline]
 fn rt_err(ctx: &str, e: &dyn std::fmt::Display) -> DgmError {
-    DgmError::RuntimeError {
-        msg: format!("{}: {}", ctx, e),
-    }
+    DgmError::runtime(format!("{}: {}", ctx, e))
 }

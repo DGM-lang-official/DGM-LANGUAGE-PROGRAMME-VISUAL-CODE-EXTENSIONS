@@ -1,6 +1,20 @@
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
     use std::path::PathBuf;
+
+    use crate::ast::Span;
+    use crate::error::DgmError;
+    use crate::interpreter::{DgmValue, Interpreter};
+
+    fn invoke_native(value: &DgmValue, args: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
+        let mut interp = Interpreter::new(Arc::new("<stdlib-test>".to_string()));
+        let span = Span::new(Arc::new("<stdlib-test>".to_string()), 1, 1);
+        match value {
+            DgmValue::NativeFunction { func, .. } => func.invoke(&mut interp, args, &span),
+            _ => panic!("not a function"),
+        }
+    }
 
     // ─── Security tests ───
 
@@ -70,8 +84,6 @@ mod tests {
     fn test_fs_write_read_delete_cycle() {
         use crate::stdlib::security::{self, SecurityConfig};
         use crate::stdlib::fs_mod;
-        use crate::interpreter::DgmValue;
-
         security::set_config(SecurityConfig::default());
 
         let test_dir = "/tmp/dgm_fs_test";
@@ -79,42 +91,38 @@ mod tests {
         let test_file = format!("{}/test_rwd.txt", test_dir);
 
         let fns = fs_mod::module();
-        let write_fn = match fns.get("write").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let result = write_fn(vec![
+        let result = invoke_native(
+            fns.get("write").unwrap(),
+            vec![
             DgmValue::Str(test_file.clone()),
             DgmValue::Str("hello dgm".into()),
-        ]);
+        ],
+        );
         assert!(result.is_ok());
 
-        let read_fn = match fns.get("read").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let result = read_fn(vec![DgmValue::Str(test_file.clone())]);
+        let result = invoke_native(fns.get("read").unwrap(), vec![DgmValue::Str(test_file.clone())]);
         assert!(result.is_ok());
         match result.unwrap() {
             DgmValue::Str(s) => assert_eq!(s, "hello dgm"),
             _ => panic!("expected string"),
         }
 
-        let exists_fn = match fns.get("exists").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let result = exists_fn(vec![DgmValue::Str(test_file.clone())]);
+        let result = invoke_native(
+            fns.get("exists").unwrap(),
+            vec![DgmValue::Str(test_file.clone())],
+        );
         assert!(matches!(result.unwrap(), DgmValue::Bool(true)));
 
-        let delete_fn = match fns.get("delete").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let result = delete_fn(vec![DgmValue::Str(test_file.clone())]);
+        let result = invoke_native(
+            fns.get("delete").unwrap(),
+            vec![DgmValue::Str(test_file.clone())],
+        );
         assert!(result.is_ok());
 
-        let result = exists_fn(vec![DgmValue::Str(test_file.clone())]);
+        let result = invoke_native(
+            fns.get("exists").unwrap(),
+            vec![DgmValue::Str(test_file.clone())],
+        );
         assert!(matches!(result.unwrap(), DgmValue::Bool(false)));
 
         let _ = std::fs::remove_dir_all(test_dir);
@@ -124,8 +132,6 @@ mod tests {
     fn test_fs_append() {
         use crate::stdlib::security::{self, SecurityConfig};
         use crate::stdlib::fs_mod;
-        use crate::interpreter::DgmValue;
-
         security::set_config(SecurityConfig::default());
 
         let test_dir = "/tmp/dgm_fs_test_append";
@@ -133,30 +139,27 @@ mod tests {
         let test_file = format!("{}/append.txt", test_dir);
 
         let fns = fs_mod::module();
-        let write_fn = match fns.get("write").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let append_fn = match fns.get("append").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let read_fn = match fns.get("read").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-
-        write_fn(vec![
+        invoke_native(
+            fns.get("write").unwrap(),
+            vec![
             DgmValue::Str(test_file.clone()),
             DgmValue::Str("aaa".into()),
-        ]).unwrap();
+        ],
+        )
+        .unwrap();
 
-        append_fn(vec![
+        invoke_native(
+            fns.get("append").unwrap(),
+            vec![
             DgmValue::Str(test_file.clone()),
             DgmValue::Str("bbb".into()),
-        ]).unwrap();
+        ],
+        )
+        .unwrap();
 
-        let result = read_fn(vec![DgmValue::Str(test_file.clone())]).unwrap();
+        let result =
+            invoke_native(fns.get("read").unwrap(), vec![DgmValue::Str(test_file.clone())])
+                .unwrap();
         match result {
             DgmValue::Str(s) => assert_eq!(s, "aaabbb"),
             _ => panic!("expected string"),
@@ -169,8 +172,6 @@ mod tests {
     fn test_fs_list() {
         use crate::stdlib::security::{self, SecurityConfig};
         use crate::stdlib::fs_mod;
-        use crate::interpreter::DgmValue;
-
         security::set_config(SecurityConfig::default());
 
         let test_dir = "/tmp/dgm_fs_test_list";
@@ -180,11 +181,7 @@ mod tests {
         std::fs::write(format!("{}/b.txt", test_dir), "b").unwrap();
 
         let fns = fs_mod::module();
-        let list_fn = match fns.get("list").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let result = list_fn(vec![DgmValue::Str(test_dir.into())]).unwrap();
+        let result = invoke_native(fns.get("list").unwrap(), vec![DgmValue::Str(test_dir.into())]).unwrap();
         match result {
             DgmValue::List(l) => {
                 let items = l.borrow();
@@ -200,8 +197,6 @@ mod tests {
     fn test_fs_sandbox_violation() {
         use crate::stdlib::security::{self, SecurityConfig};
         use crate::stdlib::fs_mod;
-        use crate::interpreter::DgmValue;
-
         let sandbox = "/tmp/dgm_sandbox_test";
         let _ = std::fs::create_dir_all(sandbox);
 
@@ -214,17 +209,13 @@ mod tests {
         });
 
         let fns = fs_mod::module();
-        let read_fn = match fns.get("read").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-
-        let result = read_fn(vec![DgmValue::Str("/etc/hostname".into())]);
+        let result = invoke_native(fns.get("read").unwrap(), vec![DgmValue::Str("/etc/hostname".into())]);
         assert!(result.is_err());
 
-        let result = read_fn(vec![DgmValue::Str(
-            format!("{}/../../../etc/hostname", sandbox),
-        )]);
+        let result = invoke_native(
+            fns.get("read").unwrap(),
+            vec![DgmValue::Str(format!("{}/../../../etc/hostname", sandbox))],
+        );
         assert!(result.is_err());
 
         security::set_config(SecurityConfig::default());
@@ -237,17 +228,12 @@ mod tests {
     fn test_os_exec_enabled() {
         use crate::stdlib::security::{self, SecurityConfig};
         use crate::stdlib::os_mod;
-        use crate::interpreter::DgmValue;
-
         security::set_config(SecurityConfig::default());
 
         let fns = os_mod::module();
-        let exec_fn = match fns.get("exec").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-
-        let result = exec_fn(vec![DgmValue::Str("echo hello".into())]).unwrap();
+        let result =
+            invoke_native(fns.get("exec").unwrap(), vec![DgmValue::Str("echo hello".into())])
+                .unwrap();
         match result {
             DgmValue::Map(m) => {
                 let map = m.borrow();
@@ -265,8 +251,6 @@ mod tests {
     fn test_os_exec_blocked() {
         use crate::stdlib::security::{self, SecurityConfig};
         use crate::stdlib::os_mod;
-        use crate::interpreter::DgmValue;
-
         security::set_config(SecurityConfig {
             allow_fs: true,
             allow_exec: false,
@@ -276,19 +260,12 @@ mod tests {
         });
 
         let fns = os_mod::module();
-        let exec_fn = match fns.get("exec").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-
-        let result = exec_fn(vec![DgmValue::Str("echo hello".into())]);
+        let result =
+            invoke_native(fns.get("exec").unwrap(), vec![DgmValue::Str("echo hello".into())]);
         assert!(result.is_err());
 
-        let spawn_fn = match fns.get("spawn").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let result = spawn_fn(vec![DgmValue::Str("echo hello".into())]);
+        let result =
+            invoke_native(fns.get("spawn").unwrap(), vec![DgmValue::Str("echo hello".into())]);
         assert!(result.is_err());
 
         security::set_config(SecurityConfig::default());
@@ -297,32 +274,21 @@ mod tests {
     #[test]
     fn test_os_cwd_chdir() {
         use crate::stdlib::os_mod;
-        use crate::interpreter::DgmValue;
-
         let fns = os_mod::module();
-        let cwd_fn = match fns.get("cwd").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-        let chdir_fn = match fns.get("chdir").unwrap() {
-            DgmValue::NativeFunction { func, .. } => *func,
-            _ => panic!("not a function"),
-        };
-
-        let original = cwd_fn(vec![]).unwrap();
+        let original = invoke_native(fns.get("cwd").unwrap(), vec![]).unwrap();
         let orig_path = match &original {
             DgmValue::Str(s) => s.clone(),
             _ => panic!("expected string"),
         };
 
-        chdir_fn(vec![DgmValue::Str("/tmp".into())]).unwrap();
+        invoke_native(fns.get("chdir").unwrap(), vec![DgmValue::Str("/tmp".into())]).unwrap();
 
-        let new_cwd = cwd_fn(vec![]).unwrap();
+        let new_cwd = invoke_native(fns.get("cwd").unwrap(), vec![]).unwrap();
         match &new_cwd {
             DgmValue::Str(s) => assert!(s.contains("tmp")),
             _ => panic!("expected string"),
         }
 
-        chdir_fn(vec![DgmValue::Str(orig_path)]).unwrap();
+        invoke_native(fns.get("chdir").unwrap(), vec![DgmValue::Str(orig_path)]).unwrap();
     }
 }

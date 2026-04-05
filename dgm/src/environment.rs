@@ -41,7 +41,7 @@ impl Environment {
         } else if let Some(p) = &self.parent {
             p.borrow_mut().assign(name, value)
         } else {
-            Err(DgmError::RuntimeError { msg: format!("undefined variable '{}'", name) })
+            Err(DgmError::undefined_variable(name))
         }
     }
 

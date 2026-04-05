@@ -1,0 +1,7 @@
+let status = 3
+
+match status {
+  1 => { writ("one") }
+  2 => { writ("two") }
+  _ => { writ("other") }
+}

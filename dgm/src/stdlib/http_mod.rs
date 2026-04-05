@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::interpreter::DgmValue;
+use crate::interpreter::{DgmValue, NativeFunction};
 use crate::error::DgmError;
 use super::security;
 
@@ -16,7 +16,13 @@ pub fn module() -> HashMap<String, DgmValue> {
         ("serve", http_serve),
     ];
     for (name, func) in fns {
-        m.insert(name.to_string(), DgmValue::NativeFunction { name: format!("http.{}", name), func: *func });
+        m.insert(
+            name.to_string(),
+            DgmValue::NativeFunction {
+                name: format!("http.{}", name),
+                func: NativeFunction::simple(*func),
+            },
+        );
     }
     m
 }
@@ -239,10 +245,10 @@ fn http_serve(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
 
 #[inline]
 fn rt(ctx: &str, e: &dyn std::fmt::Display) -> DgmError {
-    DgmError::RuntimeError { msg: format!("{}: {}", ctx, e) }
+    DgmError::runtime(format!("{}: {}", ctx, e))
 }
 
 #[inline]
 fn rt_msg(msg: &str) -> DgmError {
-    DgmError::RuntimeError { msg: msg.into() }
+    DgmError::runtime(msg)
 }

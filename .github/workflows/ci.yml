@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  enforcement:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Rust test suites
+        run: cargo test
+        working-directory: dgm
+
+      - name: Check generated docs
+        run: node scripts/build_docs.js --check
+
+      - name: Validate extension JSON
+        run: jq empty package.json language-configuration.json snippets/dgm.json syntaxes/dgm.tmLanguage.json
+        working-directory: vscode-dgm
+
+      - name: Check extension entrypoint syntax
+        run: node -c extension.js
+        working-directory: vscode-dgm
+
+      - name: Package VS Code extension
+        run: npx @vscode/vsce package --no-dependencies
+        working-directory: vscode-dgm
