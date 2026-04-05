@@ -10,3 +10,4 @@ node_modules
 .editorconfig
 .eslintrc.json
 .prettierrc
+/target
