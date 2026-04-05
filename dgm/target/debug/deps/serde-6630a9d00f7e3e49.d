@@ -1,0 +1,14 @@
+/home/danggiaminh/Downloads/dgm-source/dgm/target/debug/deps/serde-6630a9d00f7e3e49.d: /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/danggiaminh/Downloads/dgm-source/dgm/target/debug/build/serde-c009742370fe200c/out/private.rs
+
+/home/danggiaminh/Downloads/dgm-source/dgm/target/debug/deps/libserde-6630a9d00f7e3e49.rlib: /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/danggiaminh/Downloads/dgm-source/dgm/target/debug/build/serde-c009742370fe200c/out/private.rs
+
+/home/danggiaminh/Downloads/dgm-source/dgm/target/debug/deps/libserde-6630a9d00f7e3e49.rmeta: /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /home/danggiaminh/Downloads/dgm-source/dgm/target/debug/build/serde-c009742370fe200c/out/private.rs
+
+/home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/home/danggiaminh/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/home/danggiaminh/Downloads/dgm-source/dgm/target/debug/build/serde-c009742370fe200c/out/private.rs:
+
+# env-dep:OUT_DIR=/home/danggiaminh/Downloads/dgm-source/dgm/target/debug/build/serde-c009742370fe200c/out

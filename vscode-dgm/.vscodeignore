@@ -1,0 +1,12 @@
+.git
+.gitignore
+.DS_Store
+.vscode
+__pycache__
+*.pyc
+node_modules
+*.vsix
+*.log
+.editorconfig
+.eslintrc.json
+.prettierrc

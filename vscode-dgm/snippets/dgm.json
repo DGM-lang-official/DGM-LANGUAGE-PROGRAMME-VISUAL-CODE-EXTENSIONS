@@ -1,0 +1,122 @@
+{
+  "Print Statement": {
+    "prefix": "writ",
+    "body": "writ(${1:message})",
+    "description": "Print output to console"
+  },
+  "Variable Declaration": {
+    "prefix": "let",
+    "body": "let ${1:name} = ${2:value}",
+    "description": "Declare a variable"
+  },
+  "Function Definition": {
+    "prefix": "def",
+    "body": "def ${1:name}(${2:params}) {\n\t${3:# body}\n}",
+    "description": "Define a function"
+  },
+  "If Statement": {
+    "prefix": "iff",
+    "body": "iff (${1:condition}) {\n\t${2:# body}\n}",
+    "description": "Conditional if statement"
+  },
+  "If-Else Statement": {
+    "prefix": "ifelse",
+    "body": "iff (${1:condition}) {\n\t${2:# then branch}\n} els {\n\t${3:# else branch}\n}",
+    "description": "Conditional if-else statement"
+  },
+  "While Loop": {
+    "prefix": "whl",
+    "body": "whl (${1:condition}) {\n\t${2:# body}\n}",
+    "description": "While loop"
+  },
+  "For Loop": {
+    "prefix": "fr",
+    "body": "fr (${1:item} in ${2:collection}) {\n\t${3:# body}\n}",
+    "description": "For loop (iterate over collection)"
+  },
+  "Try-Catch": {
+    "prefix": "try",
+    "body": "try {\n\t${1:# code}\n} catch (${2:err}) {\n\t${3:# handle error}\n}",
+    "description": "Try-catch error handling"
+  },
+  "Throw Error": {
+    "prefix": "throw",
+    "body": "throw \"${1:error message}\"",
+    "description": "Throw an exception"
+  },
+  "Class Definition": {
+    "prefix": "cls",
+    "body": "cls ${1:ClassName} {\n\tdef init(${2:params}) {\n\t\t${3:# constructor}\n\t}\n}",
+    "description": "Define a class"
+  },
+  "Class Instance": {
+    "prefix": "new",
+    "body": "let ${1:obj} = new ${2:ClassName}(${3:args})",
+    "description": "Create a class instance"
+  },
+  "Return Statement": {
+    "prefix": "ret",
+    "body": "retrun ${1:value}",
+    "description": "Return from function"
+  },
+  "Import Module": {
+    "prefix": "imprt",
+    "body": "imprt ${1:module}",
+    "description": "Import a module"
+  },
+  "Lambda Function": {
+    "prefix": "lam",
+    "body": "lam(${1:params}) { ${2:body} }",
+    "description": "Create anonymous function"
+  },
+  "HTTP GET Request": {
+    "prefix": "http.get",
+    "body": "imprt \"http\"\nlet response = http.get(\"${1:url}\")",
+    "description": "Make HTTP GET request"
+  },
+  "HTTP Server": {
+    "prefix": "http.serve",
+    "body": "imprt \"http\"\n\ndef handler(req) {\n\tretrun \"${1:response}\"\n}\n\nhttp.serve(${2:8080}, handler)",
+    "description": "Start HTTP server"
+  },
+  "JSON Parse": {
+    "prefix": "json.parse",
+    "body": "imprt \"json\"\nlet data = json.parse(${1:jsonString})",
+    "description": "Parse JSON string"
+  },
+  "JSON Stringify": {
+    "prefix": "json.stringify",
+    "body": "imprt \"json\"\nlet jsonStr = json.stringify(${1:data})",
+    "description": "Convert value to JSON string"
+  },
+  "F-String": {
+    "prefix": "fstring",
+    "body": "f\"${1:prefix }{${2:expr}}${3:suffix}\"",
+    "description": "Formatted string interpolation"
+  },
+  "Array Literal": {
+    "prefix": "[",
+    "body": "[${1:item1}, ${2:item2}]",
+    "description": "Create array"
+  },
+  "Map Literal": {
+    "prefix": "{",
+    "body": "{\"${1:key}\": ${2:value}}",
+    "description": "Create map (object)"
+  },
+  "Boolean True": {
+    "prefix": "tru",
+    "body": "tru",
+    "description": "Boolean true value"
+  },
+  "Boolean False": {
+    "prefix": "fals",
+    "body": "fals",
+    "description": "Boolean false value"
+  },
+  "Null Value": {
+    "prefix": "nul",
+    "body": "nul",
+    "description": "Null value"
+  }
+}

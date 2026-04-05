@@ -1,0 +1,76 @@
+{
+  "name": "dgm",
+  "displayName": "DGM Language Support",
+  "description": "Language support for DGM programming language — syntax highlighting, intellisense, and snippets",
+  "version": "0.2.0",
+  "publisher": "dgm-lang",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets"
+  ],
+  "keywords": [
+    "dgm",
+    "programming-language",
+    "interpreter",
+    "rust"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danggiaminh/dgm-source"
+  },
+  "contributes": {
+    "languages": [
+      {
+        "id": "dgm",
+        "aliases": [
+          "DGM",
+          "dgm"
+        ],
+        "extensions": [
+          ".dgm"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/dgm-light.svg",
+          "dark": "./icons/dgm-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "dgm",
+        "scopeName": "source.dgm",
+        "path": "./syntaxes/dgm.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "dgm",
+        "path": "./snippets/dgm.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "dgm.run",
+        "title": "Run DGM File",
+        "when": "resourceExtname == .dgm",
+        "category": "DGM"
+      },
+      {
+        "command": "dgm.version",
+        "title": "Show DGM Version",
+        "category": "DGM"
+      }
+    ]
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:dgm",
+    "onCommand:dgm.run",
+    "onCommand:dgm.version"
+  ]
+}
