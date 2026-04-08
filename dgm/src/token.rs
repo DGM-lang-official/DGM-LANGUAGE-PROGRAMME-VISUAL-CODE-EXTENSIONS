@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum TokenKind {
-    // [A] LANGUAGE STABILITY: Keywords frozen at v0.2.0 (see LANGUAGE_SPEC.md)
-    // No new keywords without major version bump
+    // Internal token kinds stay stable even when the lexer accepts compatible
+    // public spellings such as fn/def or import/imprt.
 
     IntLit,
     FloatLit,
@@ -40,6 +40,8 @@ pub enum TokenKind {
     Match,
     Extends,
     Lam,
+    Const,
+    Super,
     LParen,
     RParen,
     LBrace,
@@ -71,6 +73,7 @@ pub enum TokenKind {
     SlashEq,
     Arrow,
     DotDot,
+    DotDotDot,
     Question,
     Ampersand,
     Pipe,

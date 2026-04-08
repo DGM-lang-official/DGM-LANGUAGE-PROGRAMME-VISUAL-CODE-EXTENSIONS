@@ -1,4 +1,4 @@
-imprt xml
+import xml
 let doc = xml.parse("<root><item>hello</item></root>")
 let val = xml.query(doc, "root.item")
 writ(val.text)

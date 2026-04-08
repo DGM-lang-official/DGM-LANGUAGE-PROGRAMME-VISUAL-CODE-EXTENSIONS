@@ -10,9 +10,9 @@ Official VSCode extension for the **DGM Programming Language** — a dynamically
 - Function definitions and calls
 
 **Editor Navigation**
-- Static hover for common builtins, module calls, and DGM error codes
-- Same-file go-to-definition for `def`, `cls`, and `let` bindings
-- Document symbols for functions and classes
+- Rust-backed LSP hover for builtins, local symbols, and imported module members
+- Cross-file go-to-definition for imported module exports
+- Find references, rename symbol, document symbols, and document formatting
 
 **Language Configuration**
 - Auto-closing brackets and quotes
@@ -32,8 +32,9 @@ Official VSCode extension for the **DGM Programming Language** — a dynamically
 **Commands**
 <!-- GENERATED:VSCODE_COMMANDS:START -->
 - `Run DGM File` (`dgm.run`) — Execute current `.dgm` file
-- `Validate DGM File` (`dgm.validate`) — Validate syntax and surface diagnostics
+- `Validate DGM File` (`dgm.validate`) — Validate syntax and semantics and surface diagnostics
 - `Show DGM Version` (`dgm.version`) — Display installed DGM version
+- `Restart DGM Language Server` (`dgm.restartLanguageServer`) — Restart the DGM LSP client and server
 <!-- GENERATED:VSCODE_COMMANDS:END -->
 
 ## Installation
@@ -48,7 +49,8 @@ Official VSCode extension for the **DGM Programming Language** — a dynamically
 ```bash
 git clone https://github.com/danggiaminh/dgm-source.git
 cd vscode-dgm
-npx @vscode/vsce package --no-dependencies
+npm install
+npx @vscode/vsce package
 # Install the .vsix file in VSCode
 ```
 
@@ -77,15 +79,13 @@ npx @vscode/vsce package --no-dependencies
 
 3. Validate the file:
    - Use command palette: `DGM: Validate DGM File`
-   - Opening a `.dgm` file triggers validation automatically
-   - Editing a `.dgm` file refreshes inline diagnostics with a short debounce
-   - Saving a `.dgm` file also forces a fresh validation pass
+   - Opening or editing a `.dgm` file refreshes LSP diagnostics automatically
    - Or terminal: `dgm validate hello.dgm`
 
 4. Navigate the file:
-   - Hover on builtins like `map`, `json.parse`, or `E100`
-   - Use `Go to Definition` on same-file `def`, `cls`, and `let` bindings
-   - Open `Outline` / `Go to Symbol in Editor` for function and class symbols
+   - Hover on builtins like `map`, `json.parse`, or imported members like `helper.answer`
+   - Use `Go to Definition`, `Find References`, and `Rename Symbol` across module boundaries
+   - Format the current document through the DGM formatter
 
 ## Syntax Example
 
@@ -95,28 +95,28 @@ npx @vscode/vsce package --no-dependencies
 # Variables
 let x = 42
 let s = "hello"
-let flag = tru  # alias: true
+let flag = true  # legacy alias: tru
 
 # Functions
-def add(a, b) {
-  retrun a + b
+fn add(a, b) {
+  return a + b
 }
 
 # if/else
-iff (x > 0) {
+if (x > 0) {
   writ("positive")
-} els {
+} else {
   writ("non-positive")
 }
 
 # Loops
-fr i in [1, 2, 3] {
+for i in [1, 2, 3] {
   writ(i)
 }
 
 # Import modules
-imprt "http"
-imprt "json"
+import "http"
+import "json"
 
 # HTTP request
 let response = http.get("https://example.com")
@@ -151,10 +151,10 @@ try {
 
 ## Language Features
 
-### Keywords (Stable @ v0.2.0)
-`let`, `def`, `cls`, `new`, `ths`, `in`, `imprt`, `writ`, `iff`, `elseif`, `els`, `fr`, `whl`, `brk`, `cont`, `retrun`, `try`, `catch`, `finally`, `throw`, `match`, `and`, `or`, `not`, `tru`, `fals`, `nul`, `extends`, `lam`
+### Canonical Keywords
+`let`, `fn`, `class`, `new`, `this`, `in`, `import`, `writ`, `if`, `elseif`, `else`, `for`, `while`, `break`, `continue`, `return`, `try`, `catch`, `finally`, `throw`, `match`, `and`, `or`, `not`, `true`, `false`, `null`, `extends`, `lam`
 
-Canonical literals remain `tru`, `fals`, `nul`. Compatibility aliases `true`, `false`, `null` are also accepted.
+Legacy aliases such as `def`, `imprt`, `retrun`, `iff`, `els`, `fr`, `whl`, `brk`, `cont`, `cls`, `ths`, `tru`, `fals`, and `nul` are still accepted.
 
 ### Operators
 Arithmetic: `+`, `-`, `*`, `/`, `%`, `**`  
@@ -164,8 +164,8 @@ Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`
 Assignment: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
 
 ### Data Types
-- **Boolean**: `tru`, `fals` with `true`, `false` aliases
-- **Null**: `nul` with `null` alias
+- **Boolean**: `true`, `false` with legacy `tru`, `fals` aliases
+- **Null**: `null` with legacy `nul` alias
 - **Number**: `42`, `3.14`
 - **String**: `"hello"`
 - **Array**: `[1, 2, 3]`
@@ -179,6 +179,8 @@ Ensure DGM is installed and in your PATH:
 dgm version
 ```
 
+If the binary lives outside `PATH`, set `dgm.binaryPath` in VS Code settings.
+
 If not installed, build from source:
 ```bash
 cd /path/to/dgm-source/dgm
@@ -190,20 +192,26 @@ export PATH="./target/release:$PATH"
 1. Make sure file has `.dgm` extension
 2. Reload VSCode window: `Ctrl+Shift+P` → "Developer: Reload Window"
 
-### Go-to-definition did not jump
-Navigation is intentionally lightweight in v0.2.0:
-1. Definitions are same-file only
-2. Regex scanning covers `def`, `cls`, and `let`
-3. Cross-file symbol resolution requires future LSP work
+### LSP features are not starting
+1. Confirm `dgm lsp` runs from the terminal
+2. Check the `DGM Language Server` output panel in VS Code
+3. Verify `dgm.binaryPath` points to the DGM executable you built or installed
 
 ### Snippets not showing
-1. Start typing a snippet prefix (e.g., "def", "iff", "lam")
+1. Start typing a snippet prefix (e.g., "fn", "def", "if", "lam")
 2. Snippets appear in autocomplete menu
 3. Press Tab to expand
 
+## README / Packaging Workflow
+
+- This README is partially generated from [`../docs/manifest.json`](/home/danggiaminh/Downloads/dgm-source/docs/manifest.json) by [`../scripts/build_docs.js`](/home/danggiaminh/Downloads/dgm-source/scripts/build_docs.js).
+- After changing command lists or module summaries, run `node ../scripts/build_docs.js`.
+- CI checks generated docs with `node scripts/build_docs.js --check`.
+- Package with `npm install && npx @vscode/vsce package` so the LSP client dependency is bundled into the VSIX.
+
 ## Documentation
 
-- [Language Specification](../LANGUAGE_SPEC.md) — Frozen syntax & keywords
+- [Language Specification](../LANGUAGE_SPEC.md) — Canonical syntax and compatibility aliases
 - [Standard Library](../STDLIB_SPEC.md) — Module reference
 - [Project README](../dgm/README.md) — Full project documentation
 - [DGM Homepage](https://github.com/danggiaminh/dgm-source)
@@ -226,6 +234,6 @@ GNU General Public License v3.0 (GPL-3.0) — See [LICENSE](./LICENSE)
 
 ---
 
-**Current Version**: 0.2.0 (Alpha)  
+**Current Version**: 0.3.0 (Alpha)  
 **Language Status**: Stable ✓  
-**Last Updated**: 2026-04-05
+**Last Updated**: 2026-04-08

@@ -110,8 +110,13 @@ impl Lexer {
                     let (line, col) = self.current_position();
                     self.advance();
                     if !self.is_at_end() && self.current() == '.' {
-                        tokens.push(self.token(TokenKind::DotDot, "..", line, col));
                         self.advance();
+                        if !self.is_at_end() && self.current() == '.' {
+                            tokens.push(self.token(TokenKind::DotDotDot, "...", line, col));
+                            self.advance();
+                        } else {
+                            tokens.push(self.token(TokenKind::DotDot, "..", line, col));
+                        }
                     } else {
                         tokens.push(self.token(TokenKind::Dot, ".", line, col));
                     }
@@ -162,7 +167,27 @@ impl Lexer {
                 '/' => {
                     let (line, col) = self.current_position();
                     self.advance();
-                    if !self.is_at_end() && self.current() == '=' {
+                    if !self.is_at_end() && self.current() == '*' {
+                        // Multi-line comment
+                        self.advance();
+                        let mut depth = 1;
+                        while !self.is_at_end() && depth > 0 {
+                            if self.current() == '/' && self.peek_next() == Some('*') {
+                                depth += 1;
+                                self.advance();
+                                self.advance();
+                            } else if self.current() == '*' && self.peek_next() == Some('/') {
+                                depth -= 1;
+                                self.advance();
+                                self.advance();
+                            } else {
+                                self.advance();
+                            }
+                        }
+                        if depth > 0 {
+                            return Err(self.lex_error("unterminated block comment", line, col));
+                        }
+                    } else if !self.is_at_end() && self.current() == '=' {
                         tokens.push(self.token(TokenKind::SlashEq, "/=", line, col));
                         self.advance();
                     } else {
@@ -464,17 +489,17 @@ impl Lexer {
             self.advance();
         }
         let kind = match ident.as_str() {
-            "imprt" => TokenKind::Imprt,
+            "imprt" | "import" => TokenKind::Imprt,
             "writ" => TokenKind::Writ,
-            "def" => TokenKind::Def,
-            "retrun" => TokenKind::Retrun,
-            "iff" => TokenKind::Iff,
+            "def" | "fn" => TokenKind::Def,
+            "retrun" | "return" => TokenKind::Retrun,
+            "iff" | "if" => TokenKind::Iff,
             "elseif" => TokenKind::Elseif,
-            "els" => TokenKind::Els,
-            "fr" => TokenKind::Fr,
-            "whl" => TokenKind::Whl,
-            "brk" => TokenKind::Brk,
-            "cont" => TokenKind::Cont,
+            "els" | "else" => TokenKind::Els,
+            "fr" | "for" => TokenKind::Fr,
+            "whl" | "while" => TokenKind::Whl,
+            "brk" | "break" => TokenKind::Brk,
+            "cont" | "continue" => TokenKind::Cont,
             "tru" | "true" => TokenKind::Tru,
             "fals" | "false" => TokenKind::Fals,
             "nul" | "null" => TokenKind::Nul,
@@ -482,9 +507,9 @@ impl Lexer {
             "and" => TokenKind::And,
             "or" => TokenKind::Or,
             "not" => TokenKind::Not,
-            "cls" => TokenKind::Cls,
+            "cls" | "class" => TokenKind::Cls,
             "new" => TokenKind::New,
-            "ths" => TokenKind::Ths,
+            "ths" | "this" => TokenKind::Ths,
             "in" => TokenKind::In,
             "try" => TokenKind::Try,
             "catch" => TokenKind::Catch,
@@ -493,6 +518,8 @@ impl Lexer {
             "match" => TokenKind::Match,
             "extends" => TokenKind::Extends,
             "lam" => TokenKind::Lam,
+            "const" => TokenKind::Const,
+            "super" => TokenKind::Super,
             _ => TokenKind::Ident,
         };
         self.token(kind, ident, line, col)
@@ -554,6 +581,44 @@ mod tests {
                 TokenKind::Tru,
                 TokenKind::Fals,
                 TokenKind::Nul,
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizes_keyword_aliases() {
+        let mut lexer = Lexer::new(
+            "fn import return if else for while break continue class this \
+             def imprt retrun iff els fr whl brk cont cls ths",
+        );
+        let tokens = lexer.tokenize().unwrap();
+        let kinds: Vec<TokenKind> = tokens.into_iter().take(22).map(|token| token.kind).collect();
+
+        assert_eq!(
+            kinds,
+            vec![
+                TokenKind::Def,
+                TokenKind::Imprt,
+                TokenKind::Retrun,
+                TokenKind::Iff,
+                TokenKind::Els,
+                TokenKind::Fr,
+                TokenKind::Whl,
+                TokenKind::Brk,
+                TokenKind::Cont,
+                TokenKind::Cls,
+                TokenKind::Ths,
+                TokenKind::Def,
+                TokenKind::Imprt,
+                TokenKind::Retrun,
+                TokenKind::Iff,
+                TokenKind::Els,
+                TokenKind::Fr,
+                TokenKind::Whl,
+                TokenKind::Brk,
+                TokenKind::Cont,
+                TokenKind::Cls,
+                TokenKind::Ths,
             ]
         );
     }

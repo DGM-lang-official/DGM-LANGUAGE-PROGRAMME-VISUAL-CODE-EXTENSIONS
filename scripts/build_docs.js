@@ -7,6 +7,10 @@ const repoRoot = path.resolve(__dirname, '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, 'docs', 'manifest.json'), 'utf8'));
 const docs = [
     {
+        source: path.join(repoRoot, 'README.template.md'),
+        output: path.join(repoRoot, 'README.md')
+    },
+    {
         source: path.join(repoRoot, 'dgm', 'README.template.md'),
         output: path.join(repoRoot, 'dgm', 'README.md')
     },

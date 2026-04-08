@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "input": "imprt math as m\n\ndef root(n) {\n  retrun m.sqrt(n)\n}\n\nlet flag = tru\niff flag {\n  writ(root(9))\n} els {\n  writ(0)\n}\n",
+  "tokens": null,
+  "ast": null,
+  "status": 0,
+  "stdout": "3\n",
+  "stderr": "",
+  "error": null
+}

@@ -31,6 +31,7 @@ impl Parser {
     fn parse_stmt(&mut self) -> Result<Stmt, DgmError> {
         let stmt = match self.peek().kind.clone() {
             TokenKind::Let => self.parse_let()?,
+            TokenKind::Const => self.parse_const()?,
             TokenKind::Writ => self.parse_writ()?,
             TokenKind::Iff => self.parse_if()?,
             TokenKind::Whl => self.parse_while()?,
@@ -81,10 +82,49 @@ impl Parser {
 
     fn parse_let(&mut self) -> Result<Stmt, DgmError> {
         let token = self.advance().clone();
+        // Destructuring: let [a, b, c] = expr
+        if self.check(TokenKind::LBracket) {
+            return self.parse_let_destructure(token.span());
+        }
         let name = self.expect_ident()?;
         self.expect(TokenKind::Eq)?;
         let value = self.parse_expr()?;
         Ok(Stmt::new(token.span(), StmtKind::Let { name, value }))
+    }
+
+    fn parse_const(&mut self) -> Result<Stmt, DgmError> {
+        let token = self.advance().clone();
+        let name = self.expect_ident()?;
+        self.expect(TokenKind::Eq)?;
+        let value = self.parse_expr()?;
+        Ok(Stmt::new(token.span(), StmtKind::Const { name, value }))
+    }
+
+    fn parse_let_destructure(&mut self, span: Span) -> Result<Stmt, DgmError> {
+        self.expect(TokenKind::LBracket)?;
+        let mut names = vec![];
+        let mut rest = None;
+        if !self.check(TokenKind::RBracket) {
+            if self.check(TokenKind::DotDotDot) {
+                self.advance();
+                rest = Some(self.expect_ident()?);
+            } else {
+                names.push(self.expect_ident()?);
+            }
+            while self.check(TokenKind::Comma) {
+                self.advance();
+                if self.check(TokenKind::DotDotDot) {
+                    self.advance();
+                    rest = Some(self.expect_ident()?);
+                    break;
+                }
+                names.push(self.expect_ident()?);
+            }
+        }
+        self.expect(TokenKind::RBracket)?;
+        self.expect(TokenKind::Eq)?;
+        let value = self.parse_expr()?;
+        Ok(Stmt::new(span, StmtKind::LetDestructure { names, rest, value }))
     }
 
     fn parse_writ(&mut self) -> Result<Stmt, DgmError> {
@@ -149,11 +189,11 @@ impl Parser {
         let token = self.advance().clone();
         let name = self.expect_ident()?;
         self.expect(TokenKind::LParen)?;
-        let params = self.parse_param_list()?;
+        let (params, defaults, rest_param) = self.parse_param_list_ext()?;
         self.expect(TokenKind::RParen)?;
         self.skip_newlines();
         let body = self.parse_block()?;
-        Ok(Stmt::new(token.span(), StmtKind::FuncDef { name, params, body }))
+        Ok(Stmt::new(token.span(), StmtKind::FuncDef { name, params, defaults, rest_param, body }))
     }
 
     fn parse_class_def(&mut self) -> Result<Stmt, DgmError> {
@@ -248,10 +288,17 @@ impl Parser {
                 default = Some(self.parse_match_arm_block()?);
             } else {
                 let pattern = self.parse_expr()?;
+                // Optional guard: pattern iff condition => ...
+                let guard = if self.check(TokenKind::Iff) {
+                    self.advance();
+                    Some(self.parse_expr()?)
+                } else {
+                    None
+                };
                 self.expect(TokenKind::Arrow)?;
                 self.skip_newlines();
                 let block = self.parse_match_arm_block()?;
-                arms.push((pattern, block));
+                arms.push((pattern, guard, block));
             }
             self.skip_newlines();
             if self.check(TokenKind::Comma) {
@@ -286,16 +333,52 @@ impl Parser {
 
     #[allow(dead_code)]
     fn parse_param_list(&mut self) -> Result<Vec<String>, DgmError> {
+        let (params, _, _) = self.parse_param_list_ext()?;
+        Ok(params)
+    }
+
+    fn parse_param_list_ext(&mut self) -> Result<(Vec<String>, Vec<Option<Expr>>, Option<String>), DgmError> {
         let mut params = vec![];
+        let mut defaults = vec![];
+        let mut rest_param = None;
+        let mut seen_default = false;
         if self.check(TokenKind::RParen) {
-            return Ok(params);
+            return Ok((params, defaults, rest_param));
+        }
+        // Check for rest param
+        if self.check(TokenKind::DotDotDot) {
+            self.advance();
+            rest_param = Some(self.expect_ident()?);
+            return Ok((params, defaults, rest_param));
         }
         params.push(self.expect_ident()?);
+        if self.check(TokenKind::Eq) {
+            self.advance();
+            defaults.push(Some(self.parse_expr()?));
+            seen_default = true;
+        } else {
+            defaults.push(None);
+        }
         while self.check(TokenKind::Comma) {
             self.advance();
+            if self.check(TokenKind::DotDotDot) {
+                self.advance();
+                rest_param = Some(self.expect_ident()?);
+                break;
+            }
             params.push(self.expect_ident()?);
+            if self.check(TokenKind::Eq) {
+                self.advance();
+                defaults.push(Some(self.parse_expr()?));
+                seen_default = true;
+            } else {
+                if seen_default {
+                    return Err(self.error("non-default parameter after default parameter"));
+                }
+                defaults.push(None);
+            }
         }
-        Ok(params)
+        Ok((params, defaults, rest_param))
     }
 
     fn parse_expr(&mut self) -> Result<Expr, DgmError> {
@@ -736,6 +819,10 @@ impl Parser {
                 self.advance();
                 Ok(Expr::new(token.span(), ExprKind::This))
             }
+            TokenKind::Super => {
+                self.advance();
+                Ok(Expr::new(token.span(), ExprKind::Super))
+            }
             TokenKind::Ident => {
                 self.advance();
                 let span = token.span();
@@ -765,7 +852,7 @@ impl Parser {
                 self.advance();
                 let span = token.span();
                 self.expect(TokenKind::LParen)?;
-                let params = self.parse_param_list()?;
+                let (params, defaults, rest_param) = self.parse_param_list_ext()?;
                 self.expect(TokenKind::RParen)?;
                 self.expect(TokenKind::Arrow)?;
                 self.skip_newlines();
@@ -775,7 +862,7 @@ impl Parser {
                     let expr = self.parse_expr()?;
                     vec![Stmt::new(expr.span.clone(), StmtKind::Return(Some(expr)))]
                 };
-                Ok(Expr::new(span, ExprKind::Lambda { params, body }))
+                Ok(Expr::new(span, ExprKind::Lambda { params, defaults, rest_param, body }))
             }
             TokenKind::FStringStart => {
                 self.advance();
@@ -925,5 +1012,9 @@ impl Parser {
             )
             .with_span(token.span()))
         }
+    }
+
+    fn error(&self, message: impl Into<String>) -> DgmError {
+        DgmError::new(ErrorCode::ParseError, message).with_span(self.peek().span())
     }
 }

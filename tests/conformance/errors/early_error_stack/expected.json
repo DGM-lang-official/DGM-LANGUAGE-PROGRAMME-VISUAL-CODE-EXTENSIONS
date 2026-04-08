@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "def a() {\n  undefined_var\n}\n\na()\n",
+  "input": "fn a() {\n  undefined_var\n}\n\na()\n",
   "tokens": null,
   "ast": null,
   "status": 1,

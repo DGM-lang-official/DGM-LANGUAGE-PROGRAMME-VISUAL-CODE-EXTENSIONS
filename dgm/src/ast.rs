@@ -35,6 +35,7 @@ pub enum ExprKind {
     NullLit,
     Ident(String),
     This,
+    Super,
     BinOp { op: String, left: Box<Expr>, right: Box<Expr> },
     UnaryOp { op: String, operand: Box<Expr> },
     Call { callee: Box<Expr>, args: Vec<Expr> },
@@ -44,7 +45,7 @@ pub enum ExprKind {
     Map(Vec<(Expr, Expr)>),
     Assign { target: Box<Expr>, op: String, value: Box<Expr> },
     New { class_name: String, args: Vec<Expr> },
-    Lambda { params: Vec<String>, body: Vec<Stmt> },
+    Lambda { params: Vec<String>, defaults: Vec<Option<Expr>>, rest_param: Option<String>, body: Vec<Stmt> },
     Ternary { condition: Box<Expr>, then_expr: Box<Expr>, else_expr: Box<Expr> },
     StringInterp(Vec<Expr>),
     Range { start: Box<Expr>, end: Box<Expr> },
@@ -66,6 +67,8 @@ impl Stmt {
 pub enum StmtKind {
     Expr(Expr),
     Let { name: String, value: Expr },
+    Const { name: String, value: Expr },
+    LetDestructure { names: Vec<String>, rest: Option<String>, value: Expr },
     Writ(Expr),
     If {
         condition: Expr,
@@ -75,7 +78,7 @@ pub enum StmtKind {
     },
     While { condition: Expr, body: Vec<Stmt> },
     For { var: String, iterable: Expr, body: Vec<Stmt> },
-    FuncDef { name: String, params: Vec<String>, body: Vec<Stmt> },
+    FuncDef { name: String, params: Vec<String>, defaults: Vec<Option<Expr>>, rest_param: Option<String>, body: Vec<Stmt> },
     Return(Option<Expr>),
     Break,
     Continue,
@@ -90,7 +93,7 @@ pub enum StmtKind {
     Throw(Expr),
     Match {
         expr: Expr,
-        arms: Vec<(Expr, Vec<Stmt>)>,
+        arms: Vec<(Expr, Option<Expr>, Vec<Stmt>)>,
         default: Option<Vec<Stmt>>,
     },
 }

@@ -1,6 +1,6 @@
-# DGM Language Specification – Frozen (v0.2.0)
+# DGM Language Specification – Surface Syntax
 
-> Stable language surface for DGM Alpha_Major_1
+> Canonical public spellings with legacy keyword aliases still accepted by the lexer.
 
 ---
 
@@ -8,11 +8,12 @@
 
 ### 1.1 Comments
 - **Line comments**: `#` to end of line
-- **Multiline comments**: Not supported
+- **Block comments**: `/* ... */` with nesting support
 - **Example**:
   ```dgm
   # This is a comment
   let x = 5  # inline comment
+  /* block comment */
   ```
 
 ### 1.2 String Literals
@@ -39,16 +40,16 @@
   ```
 
 ### 1.4 Boolean & Null
-- **Canonical boolean literals**: `tru`, `fals`
-- **Compatibility boolean aliases**: `true`, `false`
-- **Canonical null literal**: `nul`
-- **Compatibility null alias**: `null`
+- **Canonical boolean literals**: `true`, `false`
+- **Compatibility boolean aliases**: `tru`, `fals`
+- **Canonical null literal**: `null`
+- **Compatibility null alias**: `nul`
 - **Example**:
   ```dgm
-  let flag = tru
-  let fallback = true
-  let nothing = nul
-  let empty = null
+  let flag = true
+  let fallback = tru
+  let nothing = null
+  let empty = nul
   ```
 
 ### 1.5 Identifiers
@@ -58,26 +59,26 @@
 
 ---
 
-## 2. FROZEN KEYWORD SET
+## 2. PUBLIC KEYWORD SET
 
 | Keyword | Purpose | Category |
 |---------|---------|----------|
 | `let` | Variable binding | Declaration |
-| `def` | Function definition | Declaration |
-| `cls` | Class definition | Declaration |
+| `fn` | Function definition | Declaration |
+| `class` | Class definition | Declaration |
 | `new` | Object instantiation | Expression |
-| `ths` | This pointer | Expression |
+| `this` | This pointer | Expression |
 | `in` | Membership test (iterator) | Operator |
-| `imprt` | Module import | Statement |
+| `import` | Module import | Statement |
 | `writ` | Print output | Statement |
-| `iff` | If conditional | Control |
+| `if` | If conditional | Control |
 | `elseif` | Else-if branch | Control |
-| `els` | Else branch | Control |
-| `fr` | For loop | Control |
-| `whl` | While loop | Control |
-| `brk` | Break loop | Control |
-| `cont` | Continue loop | Control |
-| `retrun` | Return from function | Control |
+| `else` | Else branch | Control |
+| `for` | For loop | Control |
+| `while` | While loop | Control |
+| `break` | Break loop | Control |
+| `continue` | Continue loop | Control |
+| `return` | Return from function | Control |
 | `try` | Try block | Error Handling |
 | `catch` | Catch exception | Error Handling |
 | `finally` | Finally block | Error Handling |
@@ -86,18 +87,29 @@
 | `and` | Logical AND | Operator |
 | `or` | Logical OR | Operator |
 | `not` | Logical NOT | Operator |
-| `tru` | Boolean true | Literal |
-| `fals` | Boolean false | Literal |
-| `nul` | Null value | Literal |
+| `true` | Boolean true | Literal |
+| `false` | Boolean false | Literal |
+| `null` | Null value | Literal |
 | `extends` | Class inheritance | Declaration |
 | `lam` | Lambda expression | Expression |
 
-**Constraint**: This set is frozen. No additions without major version bump.
+The parser still accepts legacy spellings for backward compatibility.
 
 Compatibility aliases accepted by the lexer:
-- `true` → `tru`
-- `false` → `fals`
-- `null` → `nul`
+- `def` → `fn`
+- `imprt` → `import`
+- `retrun` → `return`
+- `iff` → `if`
+- `els` → `else`
+- `fr` → `for`
+- `whl` → `while`
+- `brk` → `break`
+- `cont` → `continue`
+- `cls` → `class`
+- `ths` → `this`
+- `tru` → `true`
+- `fals` → `false`
+- `nul` → `null`
 
 ---
 
@@ -122,18 +134,18 @@ Compatibility aliases accepted by the lexer:
 ```
 Stmt::Let { name, value }              // let x = expr
 Stmt::Writ(expr)                       // writ(expr)
-Stmt::If { cond, then_b, else_b }      // iff (cond) { ... } els { ... }
-Stmt::While { cond, body }             // whl (cond) { ... }
-Stmt::For { var, iter, body }          // fr var in iter { ... }
-Stmt::FuncDef { name, params, body }   // def name(a, b) { ... }
-Stmt::ClassDef { name, parent, body }  // cls Name { ... }
-Stmt::Return(expr)                     // retrun expr
-Stmt::Break                            // brk
-Stmt::Continue                         // cont
+Stmt::If { cond, then_b, else_b }      // if (cond) { ... } else { ... }
+Stmt::While { cond, body }             // while (cond) { ... }
+Stmt::For { var, iter, body }          // for var in iter { ... }
+Stmt::FuncDef { name, params, body }   // fn name(a, b) { ... }
+Stmt::ClassDef { name, parent, body }  // class Name { ... }
+Stmt::Return(expr)                     // return expr
+Stmt::Break                            // break
+Stmt::Continue                         // continue
 Stmt::TryCatch { try_b, catch_b, finally_b }  // try { ... } catch (e) { ... }
 Stmt::Throw(expr)                      // throw expr
 Stmt::Match { expr, arms }             // match expr { ... }
-Stmt::Imprt { name, alias }           // imprt "module", imprt module, imprt module as m
+Stmt::Imprt { name, alias }           // import "module", import module, import module as m
 Stmt::Expr(expr)                       // standalone expression
 ```
 
@@ -142,7 +154,7 @@ Stmt::Expr(expr)                       // standalone expression
 ## 5. EXPRESSION TYPES (AST)
 
 ```
-Expr::Literal(value)                   // 42, "hello", tru, nul
+Expr::Literal(value)                   // 42, "hello", true, null
 Expr::Ident(name)                      // x, my_var
 Expr::Binary { left, op, right }       // a + b, x == y
 Expr::Unary { op, operand }            // -x, !flag
@@ -199,10 +211,10 @@ Lex and parse errors include a source span. Runtime/import errors currently keep
 
 **Example**:
 ```
-[E002] expected RParen, got 'iff'
+[E002] expected RParen, got 'if'
  --> file.dgm:5:12
   |
-5 | iff (x > 0 {
+5 | if (x > 0 {
   |            ^
 [E003] undefined variable 'x'
 ```
@@ -213,18 +225,18 @@ Lex and parse errors include a source span. Runtime/import errors currently keep
 
 ### If/Else
 ```dgm
-iff (x > 0) {
+if (x > 0) {
   writ("positive")
 } elseif (x < 0) {
   writ("negative")
-} els {
+} else {
   writ("zero")
 }
 ```
 
 ### While Loop
 ```dgm
-whl (i < 10) {
+while (i < 10) {
   writ(i)
   i = i + 1
 }
@@ -232,15 +244,15 @@ whl (i < 10) {
 
 ### For Loop (Iterator)
 ```dgm
-fr item in arr {
+for item in arr {
   writ(item)
 }
 ```
 
 ### Break/Continue
 ```dgm
-fr i in [1,2,3,4,5] {
-  iff (i == 3) { brk }
+for i in [1,2,3,4,5] {
+  if (i == 3) { break }
   writ(i)
 }
 ```
@@ -263,8 +275,8 @@ throw "error message"
 
 ### Return
 ```dgm
-def add(a, b) {
-  retrun a + b
+fn add(a, b) {
+  return a + b
 }
 ```
 
@@ -273,9 +285,9 @@ def add(a, b) {
 ## 9. FUNCTION DEFINITIONS
 
 ```dgm
-def name(param1, param2) {
+fn name(param1, param2) {
 # function body
-  retrun result
+  return result
 }
 
 # Lambda (anonymous)
@@ -287,19 +299,19 @@ let square = lam(x) => x * x
 ## 10. CLASS DEFINITIONS
 
 ```dgm
-cls Animal {
-  def init(name) {
-    ths.name = name
+class Animal {
+  fn init(name) {
+    this.name = name
   }
   
-  def speak() {
-    writ(f"{ths.name} makes a sound")
+  fn speak() {
+    writ(f"{this.name} makes a sound")
   }
 }
 
-cls Dog extends Animal {
-  def speak() {
-    writ(f"{ths.name} barks")
+class Dog extends Animal {
+  fn speak() {
+    writ(f"{this.name} barks")
   }
 }
 
@@ -325,13 +337,13 @@ match x {
 
 Import modules:
 ```dgm
-imprt "math"
-imprt "http"
-imprt "json"
+import "math"
+import "http"
+import "json"
 
 # or
-imprt math
-imprt math as m
+import math
+import math as m
 ```
 
 Available modules: `math`, `io`, `fs`, `os`, `json`, `time`, `http`, `crypto`, `regex`, `net`, `thread`, `xml`, `security`
@@ -363,14 +375,14 @@ Available modules: `math`, `io`, `fs`, `os`, `json`, `time`, `http`, `crypto`, `
 
 ## STABILITY NOTES
 
-- **No changes** to keyword set without major version bump
+- **Canonical public spellings** are listed above; legacy aliases remain supported during the migration window
 - **No changes** to operator semantics in this version
 - **Error format** is stable and must be preserved
 - **All string escapes** must be consistent across implementations
-- **Comment style** is frozen: `#` only
+- **Comment style** supports both `#` line comments and nested `/* ... */` block comments
 - **Identifier rules** are frozen: `[a-zA-Z_][a-zA-Z0-9_]*`
 
 ---
 
-**Last Updated**: DGM v0.2.0  
-**Status**: Frozen ✓
+**Last Updated**: DGM keyword migration day 0  
+**Status**: Canonical surface + legacy aliases ✓

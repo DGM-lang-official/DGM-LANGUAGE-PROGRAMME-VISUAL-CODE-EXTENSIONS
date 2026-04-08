@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "imprt \"helpers\"\n",
+  "input": "import \"helpers\"\n",
   "tokens": null,
   "ast": null,
   "status": 1,

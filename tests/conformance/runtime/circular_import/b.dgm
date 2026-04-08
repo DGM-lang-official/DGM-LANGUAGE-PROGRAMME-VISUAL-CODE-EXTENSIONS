@@ -1,4 +1,4 @@
 writ("b:start")
-imprt a
-let b_done = tru
+import a
+let b_done = true
 writ("b:end")

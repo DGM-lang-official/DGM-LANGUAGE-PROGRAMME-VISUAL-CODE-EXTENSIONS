@@ -5,8 +5,12 @@
       "command": "dgm run script.dgm"
     },
     {
-      "description": "Validate syntax without executing",
+      "description": "Validate syntax and semantics without executing",
       "command": "dgm validate script.dgm"
+    },
+    {
+      "description": "Start the language server",
+      "command": "dgm lsp"
     },
     {
       "description": "Start interactive REPL",
@@ -30,12 +34,17 @@
     {
       "title": "Validate DGM File",
       "id": "dgm.validate",
-      "description": "Validate syntax and surface diagnostics"
+      "description": "Validate syntax and semantics and surface diagnostics"
     },
     {
       "title": "Show DGM Version",
       "id": "dgm.version",
       "description": "Display installed DGM version"
+    },
+    {
+      "title": "Restart DGM Language Server",
+      "id": "dgm.restartLanguageServer",
+      "description": "Restart the DGM LSP client and server"
     }
   ],
   "modules": [

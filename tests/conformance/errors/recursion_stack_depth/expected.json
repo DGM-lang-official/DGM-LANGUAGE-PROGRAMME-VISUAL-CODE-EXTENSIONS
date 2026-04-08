@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "def recur(n) {\n  iff (n == 0) {\n    undefined_var\n  }\n  retrun recur(n - 1)\n}\n\nrecur(3)\n",
+  "input": "fn recur(n) {\n  if (n == 0) {\n    undefined_var\n  }\n  return recur(n - 1)\n}\n\nrecur(3)\n",
   "tokens": null,
   "ast": null,
   "status": 1,

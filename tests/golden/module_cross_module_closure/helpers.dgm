@@ -1,5 +1,5 @@
 let base = 4
 
-def make_adder(n) {
-  retrun lam(x) => x + n + base
+fn make_adder(n) {
+  return lam(x) => x + n + base
 }

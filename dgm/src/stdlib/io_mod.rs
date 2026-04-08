@@ -138,7 +138,7 @@ fn io_input(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
     std::io::stdin()
         .read_line(&mut line)
         .map_err(|e| DgmError::runtime(format!("input: {}", e)))?;
-    Ok(DgmValue::Str(line.trim().to_string()))
+    Ok(DgmValue::Str(line.trim_end_matches('\n').trim_end_matches('\r').to_string()))
 }
 
 fn io_read_lines(a: Vec<DgmValue>) -> Result<DgmValue, DgmError> {

@@ -10,28 +10,28 @@
     "description": "Declare a variable"
   },
   "Function Definition": {
-    "prefix": "def",
-    "body": "def ${1:name}(${2:params}) {\n\t${3:# body}\n}",
+    "prefix": ["fn", "def"],
+    "body": "fn ${1:name}(${2:params}) {\n\t${3:# body}\n}",
     "description": "Define a function"
   },
   "If Statement": {
-    "prefix": "iff",
-    "body": "iff (${1:condition}) {\n\t${2:# body}\n}",
+    "prefix": ["if", "iff"],
+    "body": "if (${1:condition}) {\n\t${2:# body}\n}",
     "description": "Conditional if statement"
   },
   "If-Else Statement": {
     "prefix": "ifelse",
-    "body": "iff (${1:condition}) {\n\t${2:# then branch}\n} els {\n\t${3:# else branch}\n}",
+    "body": "if (${1:condition}) {\n\t${2:# then branch}\n} else {\n\t${3:# else branch}\n}",
     "description": "Conditional if-else statement"
   },
   "While Loop": {
-    "prefix": "whl",
-    "body": "whl (${1:condition}) {\n\t${2:# body}\n}",
+    "prefix": ["while", "whl"],
+    "body": "while (${1:condition}) {\n\t${2:# body}\n}",
     "description": "While loop"
   },
   "For Loop": {
-    "prefix": "fr",
-    "body": "fr ${1:item} in ${2:collection} {\n\t${3:# body}\n}",
+    "prefix": ["for", "fr"],
+    "body": "for ${1:item} in ${2:collection} {\n\t${3:# body}\n}",
     "description": "For loop (iterate over collection)"
   },
   "Try-Catch": {
@@ -45,8 +45,8 @@
     "description": "Throw an exception"
   },
   "Class Definition": {
-    "prefix": "cls",
-    "body": "cls ${1:ClassName} {\n\tdef init(${2:params}) {\n\t\t${3:# constructor}\n\t}\n}",
+    "prefix": ["class", "cls"],
+    "body": "class ${1:ClassName} {\n\tfn init(${2:params}) {\n\t\t${3:# constructor}\n\t}\n}",
     "description": "Define a class"
   },
   "Class Instance": {
@@ -55,13 +55,13 @@
     "description": "Create a class instance"
   },
   "Return Statement": {
-    "prefix": "ret",
-    "body": "retrun ${1:value}",
+    "prefix": ["return", "retrun", "ret"],
+    "body": "return ${1:value}",
     "description": "Return from function"
   },
   "Import Module": {
-    "prefix": "imprt",
-    "body": "imprt ${1:module}",
+    "prefix": ["import", "imprt"],
+    "body": "import ${1:module}",
     "description": "Import a module"
   },
   "Lambda Function": {
@@ -71,22 +71,22 @@
   },
   "HTTP GET Request": {
     "prefix": "http.get",
-    "body": "imprt \"http\"\nlet response = http.get(\"${1:url}\")",
+    "body": "import \"http\"\nlet response = http.get(\"${1:url}\")",
     "description": "Make HTTP GET request"
   },
   "HTTP Server": {
     "prefix": "http.serve",
-    "body": "imprt \"http\"\n\ndef handler(req) {\n\tretrun \"${1:response}\"\n}\n\nhttp.serve(${2:8080}, handler)",
+    "body": "import \"http\"\n\nfn handler(req) {\n\treturn \"${1:response}\"\n}\n\nhttp.serve(${2:8080}, handler)",
     "description": "Start HTTP server"
   },
   "JSON Parse": {
     "prefix": "json.parse",
-    "body": "imprt \"json\"\nlet data = json.parse(${1:jsonString})",
+    "body": "import \"json\"\nlet data = json.parse(${1:jsonString})",
     "description": "Parse JSON string"
   },
   "JSON Stringify": {
     "prefix": "json.stringify",
-    "body": "imprt \"json\"\nlet jsonStr = json.stringify(${1:data})",
+    "body": "import \"json\"\nlet jsonStr = json.stringify(${1:data})",
     "description": "Convert value to JSON string"
   },
   "F-String": {
@@ -105,18 +105,18 @@
     "description": "Create map (object)"
   },
   "Boolean True": {
-    "prefix": "tru",
-    "body": "tru",
+    "prefix": ["true", "tru"],
+    "body": "true",
     "description": "Boolean true value"
   },
   "Boolean False": {
-    "prefix": "fals",
-    "body": "fals",
+    "prefix": ["false", "fals"],
+    "body": "false",
     "description": "Boolean false value"
   },
   "Null Value": {
-    "prefix": "nul",
-    "body": "nul",
+    "prefix": ["null", "nul"],
+    "body": "null",
     "description": "Null value"
   }
 }

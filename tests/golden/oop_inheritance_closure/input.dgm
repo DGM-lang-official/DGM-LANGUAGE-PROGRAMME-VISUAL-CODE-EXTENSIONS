@@ -1,12 +1,12 @@
-cls Animal {
-  def speak() {
-    retrun "noise"
+class Animal {
+  fn speak() {
+    return "noise"
   }
 }
 
-cls Dog extends Animal {
-  def speak() {
-    retrun "woof"
+class Dog extends Animal {
+  fn speak() {
+    return "woof"
   }
 }
 
@@ -14,8 +14,8 @@ let dog = new Dog()
 writ(dog.speak())
 
 let prefix = "good "
-def make_message(suffix) {
-  retrun lam() => prefix + suffix
+fn make_message(suffix) {
+  return lam() => prefix + suffix
 }
 let message = make_message("dog")
 writ(message())

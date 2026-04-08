@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "def fail() {\n  undefined_var\n}\n\ntry {\n  fail()\n} catch (err) {\n  writ(err)\n}\n\nfail()\n",
+  "input": "fn fail() {\n  undefined_var\n}\n\ntry {\n  fail()\n} catch (err) {\n  writ(err)\n}\n\nfail()\n",
   "tokens": null,
   "ast": null,
   "status": 1,

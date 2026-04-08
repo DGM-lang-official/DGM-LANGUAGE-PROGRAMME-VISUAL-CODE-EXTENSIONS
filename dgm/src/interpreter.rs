@@ -47,6 +47,8 @@ pub enum DgmValue {
     Function {
         name: Option<String>,
         params: Vec<String>,
+        defaults: Vec<Option<Expr>>,
+        rest_param: Option<String>,
         body: Vec<Stmt>,
         closure: Rc<RefCell<Environment>>,
     },
@@ -112,7 +114,14 @@ impl fmt::Display for DgmValue {
             }
             DgmValue::Function { params, .. } => write!(f, "<fn({})>", params.join(", ")),
             DgmValue::NativeFunction { name, .. } => write!(f, "<native {}>", name),
-            DgmValue::Instance { class_name, .. } => write!(f, "<{} instance>", class_name),
+            DgmValue::Instance { class_name, fields, .. } => {
+                if let Some(DgmValue::Function { .. }) = fields.borrow().get("__str__") {
+                    // __str__ display handled at call site
+                    write!(f, "<{} instance>", class_name)
+                } else {
+                    write!(f, "<{} instance>", class_name)
+                }
+            }
         }
     }
 }
@@ -150,6 +159,8 @@ enum Callable {
     User {
         frame_name: String,
         params: Vec<String>,
+        defaults: Vec<Option<Expr>>,
+        rest_param: Option<String>,
         body: Vec<Stmt>,
         closure: Rc<RefCell<Environment>>,
         bound_self: Option<DgmValue>,
@@ -212,6 +223,7 @@ impl Interpreter {
             ("hex", native_hex),
             ("bin", native_bin),
             ("exit", native_exit),
+            ("assert", native_assert),
         ];
         for (name, func) in simple_natives {
             globals.borrow_mut().set(
@@ -279,9 +291,33 @@ impl Interpreter {
                 env.borrow_mut().set(name, v);
                 Ok(ControlFlow::None)
             }
+            StmtKind::Const { name, value } => {
+                let v = self.eval_expr(value, Rc::clone(&env))?;
+                env.borrow_mut().set_const(name, v);
+                Ok(ControlFlow::None)
+            }
+            StmtKind::LetDestructure { names, rest, value } => {
+                let v = self.eval_expr(value, Rc::clone(&env))?;
+                match v {
+                    DgmValue::List(l) => {
+                        let list = l.borrow();
+                        for (i, name) in names.iter().enumerate() {
+                            let val = list.get(i).cloned().unwrap_or(DgmValue::Null);
+                            env.borrow_mut().set(name, val);
+                        }
+                        if let Some(rest_name) = rest {
+                            let rest_vals: Vec<DgmValue> = list.iter().skip(names.len()).cloned().collect();
+                            env.borrow_mut().set(rest_name, DgmValue::List(Rc::new(RefCell::new(rest_vals))));
+                        }
+                    }
+                    _ => return Err(DgmError::runtime("destructuring requires a list")),
+                }
+                Ok(ControlFlow::None)
+            }
             StmtKind::Writ(expr) => {
-                let v = self.eval_expr(expr, env)?;
-                println!("{}", v);
+                let v = self.eval_expr(expr, Rc::clone(&env))?;
+                let display = self.value_to_string(&v, &stmt.span)?;
+                println!("{}", display);
                 Ok(ControlFlow::None)
             }
             StmtKind::If {
@@ -354,10 +390,12 @@ impl Interpreter {
                 }
                 Ok(ControlFlow::None)
             }
-            StmtKind::FuncDef { name, params, body } => {
+            StmtKind::FuncDef { name, params, defaults, rest_param, body } => {
                 let func = DgmValue::Function {
                     name: Some(name.clone()),
                     params: params.clone(),
+                    defaults: defaults.clone(),
+                    rest_param: rest_param.clone(),
                     body: body.clone(),
                     closure: Rc::clone(&env),
                 };
@@ -416,9 +454,15 @@ impl Interpreter {
             }
             StmtKind::Match { expr, arms, default } => {
                 let val = self.eval_expr(expr, Rc::clone(&env))?;
-                for (pattern, block) in arms {
+                for (pattern, guard, block) in arms {
                     let pat_val = self.eval_expr(pattern, Rc::clone(&env))?;
                     if dgm_eq(&val, &pat_val) {
+                        if let Some(guard_expr) = guard {
+                            let guard_val = self.eval_expr(guard_expr, Rc::clone(&env))?;
+                            if !self.is_truthy(&guard_val) {
+                                continue;
+                            }
+                        }
                         return self.exec_block(block, Rc::clone(&env));
                     }
                 }
@@ -467,6 +511,10 @@ impl Interpreter {
                 .borrow()
                 .get("__self__")
                 .ok_or_else(|| DgmError::runtime("'ths' used outside class")),
+            ExprKind::Super => env
+                .borrow()
+                .get("__super__")
+                .ok_or_else(|| DgmError::runtime("'super' used outside subclass")),
             ExprKind::Ident(name) => env
                 .borrow()
                 .get(name)
@@ -514,6 +562,28 @@ impl Interpreter {
             }
             ExprKind::Call { callee, args } => {
                 if let ExprKind::FieldAccess { object, field } = &callee.kind {
+                    // super.method() - bind self from current scope
+                    if matches!(object.kind, ExprKind::Super) {
+                        let super_map = env.borrow().get("__super__")
+                            .ok_or_else(|| DgmError::runtime("'super' used outside subclass"))?;
+                        let current_self = env.borrow().get("__self__");
+                        if let DgmValue::Map(ref m) = super_map {
+                            if let Some(func) = m.borrow().get(field).cloned() {
+                                let arg_vals: Vec<DgmValue> = args
+                                    .iter()
+                                    .map(|a| self.eval_expr(a, Rc::clone(&env)))
+                                    .collect::<Result<_, _>>()?;
+                                return self.call_value(
+                                    func,
+                                    arg_vals,
+                                    &expr.span,
+                                    current_self,
+                                    Some(field.as_str()),
+                                );
+                            }
+                        }
+                        return Err(DgmError::invalid_call(format!("no super method '{}'", field)));
+                    }
                     let obj = self.eval_expr(object, Rc::clone(&env))?;
                     if let DgmValue::Instance { ref fields, .. } = obj {
                         let method = fields.borrow().get(field).cloned().ok_or_else(|| {
@@ -639,9 +709,11 @@ impl Interpreter {
             ExprKind::New { class_name, args } => {
                 self.instantiate_class(class_name, args, env, &expr.span)
             }
-            ExprKind::Lambda { params, body } => Ok(DgmValue::Function {
+            ExprKind::Lambda { params, defaults, rest_param, body } => Ok(DgmValue::Function {
                 name: None,
                 params: params.clone(),
+                defaults: defaults.clone(),
+                rest_param: rest_param.clone(),
                 body: body.clone(),
                 closure: Rc::clone(&env),
             }),
@@ -700,18 +772,52 @@ impl Interpreter {
         };
 
         let all_methods = self.collect_methods(&class);
+
+        // Collect parent-only methods for super
+        let mut super_methods: HashMap<String, DgmValue> = HashMap::new();
+        if let Some(ref parent_name) = class.parent {
+            if let Some(parent_class) = self.classes.get(parent_name).cloned() {
+                let parent_meths = self.collect_methods(&parent_class);
+                for method in &parent_meths {
+                    if let StmtKind::FuncDef { name, params, defaults, rest_param, body } = &method.kind {
+                        super_methods.insert(
+                            name.clone(),
+                            DgmValue::Function {
+                                name: Some(name.clone()),
+                                params: params.clone(),
+                                defaults: defaults.clone(),
+                                rest_param: rest_param.clone(),
+                                body: body.clone(),
+                                closure: Rc::clone(&env),
+                            },
+                        );
+                    }
+                }
+            }
+        }
+
         for method in &all_methods {
-            if let StmtKind::FuncDef { name, params, body } = &method.kind {
+            if let StmtKind::FuncDef { name, params, defaults, rest_param, body } = &method.kind {
                 fields.borrow_mut().insert(
                     name.clone(),
                     DgmValue::Function {
                         name: Some(name.clone()),
                         params: params.clone(),
+                        defaults: defaults.clone(),
+                        rest_param: rest_param.clone(),
                         body: body.clone(),
                         closure: Rc::clone(&env),
                     },
                 );
             }
+        }
+
+        // Store __super__ for super.method() calls
+        if !super_methods.is_empty() {
+            fields.borrow_mut().insert(
+                "__super__".to_string(),
+                DgmValue::Map(Rc::new(RefCell::new(super_methods))),
+            );
         }
 
         if let Some(init_fn) = fields.borrow().get("init").cloned() {
@@ -733,9 +839,9 @@ impl Interpreter {
             }
         }
         for method in &class.methods {
-            if let StmtKind::FuncDef { name, .. } = &method.kind {
+            if let StmtKind::FuncDef { name: method_name, .. } = &method.kind {
                 methods.retain(|existing| match &existing.kind {
-                    StmtKind::FuncDef { name: existing_name, .. } => existing_name != name,
+                    StmtKind::FuncDef { name: existing_name, .. } => existing_name != method_name,
                     _ => true,
                 });
             }
@@ -839,6 +945,8 @@ impl Interpreter {
             DgmValue::Function {
                 name,
                 params,
+                defaults,
+                rest_param,
                 body,
                 closure,
             } => Ok(Callable::User {
@@ -847,6 +955,8 @@ impl Interpreter {
                     .or(name)
                     .unwrap_or_else(|| "<lambda>".to_string()),
                 params,
+                defaults,
+                rest_param,
                 body,
                 closure,
                 bound_self,
@@ -859,7 +969,7 @@ impl Interpreter {
         }
     }
 
-    fn call_value(
+    pub fn call_value(
         &mut self,
         callee: DgmValue,
         args: Vec<DgmValue>,
@@ -883,25 +993,64 @@ impl Interpreter {
             Callable::Native { func, .. } => func.invoke(interp, args, &call_span),
             Callable::User {
                 params,
+                defaults,
+                rest_param,
                 body,
                 closure,
                 bound_self,
                 ..
             } => {
-                if params.len() != args.len() {
+                let min_args = params.iter().zip(defaults.iter())
+                    .filter(|(_, d)| d.is_none())
+                    .count();
+                let max_args = params.len();
+
+                if rest_param.is_some() {
+                    if args.len() < min_args {
+                        return Err(DgmError::invalid_call(format!(
+                            "expected at least {} args, got {}",
+                            min_args, args.len()
+                        )));
+                    }
+                } else if args.len() < min_args || args.len() > max_args {
                     return Err(DgmError::invalid_call(format!(
                         "expected {} args, got {}",
-                        params.len(),
+                        if min_args == max_args {
+                            format!("{}", max_args)
+                        } else {
+                            format!("{}-{}", min_args, max_args)
+                        },
                         args.len()
                     )));
                 }
 
                 let call_env = Rc::new(RefCell::new(Environment::new_child(closure)));
-                if let Some(this_value) = bound_self {
-                    call_env.borrow_mut().set("__self__", this_value);
+                if let Some(this_value) = &bound_self {
+                    call_env.borrow_mut().set("__self__", this_value.clone());
+                    // propagate __super__ from instance fields
+                    if let DgmValue::Instance { fields, .. } = this_value {
+                        if let Some(super_val) = fields.borrow().get("__super__").cloned() {
+                            call_env.borrow_mut().set("__super__", super_val);
+                        }
+                    }
                 }
-                for (p, v) in params.iter().zip(args) {
-                    call_env.borrow_mut().set(p, v);
+
+                // Bind params with defaults
+                for (i, p) in params.iter().enumerate() {
+                    let val = if i < args.len() {
+                        args[i].clone()
+                    } else if let Some(Some(default_expr)) = defaults.get(i) {
+                        interp.eval_expr(default_expr, Rc::clone(&call_env))?
+                    } else {
+                        DgmValue::Null
+                    };
+                    call_env.borrow_mut().set(p, val);
+                }
+
+                // Bind rest param
+                if let Some(ref rest_name) = rest_param {
+                    let rest_vals: Vec<DgmValue> = args.into_iter().skip(params.len()).collect();
+                    call_env.borrow_mut().set(rest_name, DgmValue::List(Rc::new(RefCell::new(rest_vals))));
                 }
 
                 match interp.exec_block(&body, call_env)? {
@@ -912,6 +1061,16 @@ impl Interpreter {
                 }
             }
         })
+    }
+
+    fn value_to_string(&mut self, val: &DgmValue, span: &Span) -> Result<String, DgmError> {
+        if let DgmValue::Instance { fields, .. } = val {
+            if let Some(str_fn) = fields.borrow().get("__str__").cloned() {
+                let result = self.call_value(str_fn, vec![], span, Some(val.clone()), Some("__str__"))?;
+                return Ok(format!("{}", result));
+            }
+        }
+        Ok(format!("{}", val))
     }
 
     fn is_truthy(&self, value: &DgmValue) -> bool {
@@ -1870,4 +2029,24 @@ fn native_exit(args: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
         _ => 0,
     };
     std::process::exit(code);
+}
+
+fn native_assert(args: Vec<DgmValue>) -> Result<DgmValue, DgmError> {
+    let condition = args.first().unwrap_or(&DgmValue::Null);
+    let is_truthy = match condition {
+        DgmValue::Bool(b) => *b,
+        DgmValue::Null => false,
+        DgmValue::Int(n) => *n != 0,
+        DgmValue::Float(f) => *f != 0.0,
+        DgmValue::Str(s) => !s.is_empty(),
+        _ => true,
+    };
+    if !is_truthy {
+        let msg = match args.get(1) {
+            Some(DgmValue::Str(s)) => s.clone(),
+            _ => "assertion failed".to_string(),
+        };
+        return Err(DgmError::runtime(msg));
+    }
+    Ok(DgmValue::Bool(true))
 }

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "imprt xml\nlet doc = xml.parse(\"<root><item>hello</item></root>\")\nlet val = xml.query(doc, \"root.item\")\nwrit(val.text)\n",
+  "input": "import xml\nlet doc = xml.parse(\"<root><item>hello</item></root>\")\nlet val = xml.query(doc, \"root.item\")\nwrit(val.text)\n",
   "tokens": null,
   "ast": null,
   "status": 0,

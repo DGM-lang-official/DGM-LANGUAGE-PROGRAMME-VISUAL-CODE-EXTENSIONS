@@ -1,4 +1,4 @@
-def a() {
+fn a() {
   undefined_var
 }
 

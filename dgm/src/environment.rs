@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use crate::error::DgmError;
 use crate::interpreter::DgmValue;
@@ -7,16 +7,17 @@ use crate::interpreter::DgmValue;
 #[derive(Debug, Clone)]
 pub struct Environment {
     values: HashMap<String, DgmValue>,
+    constants: HashSet<String>,
     parent: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
     pub fn new() -> Self {
-        Self { values: HashMap::new(), parent: None }
+        Self { values: HashMap::new(), constants: HashSet::new(), parent: None }
     }
 
     pub fn new_child(parent: Rc<RefCell<Environment>>) -> Self {
-        Self { values: HashMap::new(), parent: Some(parent) }
+        Self { values: HashMap::new(), constants: HashSet::new(), parent: Some(parent) }
     }
 
     pub fn get(&self, name: &str) -> Option<DgmValue> {
@@ -33,8 +34,26 @@ impl Environment {
         self.values.insert(name.to_string(), value);
     }
 
+    pub fn set_const(&mut self, name: &str, value: DgmValue) {
+        self.values.insert(name.to_string(), value);
+        self.constants.insert(name.to_string());
+    }
+
+    pub fn is_const(&self, name: &str) -> bool {
+        if self.constants.contains(name) {
+            true
+        } else if let Some(p) = &self.parent {
+            p.borrow().is_const(name)
+        } else {
+            false
+        }
+    }
+
     /// Assign to existing variable, walking up scope chain
     pub fn assign(&mut self, name: &str, value: DgmValue) -> Result<(), DgmError> {
+        if self.constants.contains(name) {
+            return Err(DgmError::runtime(format!("cannot reassign constant '{}'", name)));
+        }
         if self.values.contains_key(name) {
             self.values.insert(name.to_string(), value);
             Ok(())

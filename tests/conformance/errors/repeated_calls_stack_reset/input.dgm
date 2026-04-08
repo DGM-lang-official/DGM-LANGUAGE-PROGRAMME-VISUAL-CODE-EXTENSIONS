@@ -1,4 +1,4 @@
-def fail() {
+fn fail() {
   undefined_var
 }
 

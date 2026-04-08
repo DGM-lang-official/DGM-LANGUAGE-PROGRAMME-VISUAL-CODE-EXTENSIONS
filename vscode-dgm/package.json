@@ -2,7 +2,7 @@
   "name": "dgm-devkit",
   "displayName": "DGM DevKit",
   "description": "Language tools for DGM (DangGiaMinh)",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "dgm-lang",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -22,7 +22,8 @@
     "onLanguage:dgm",
     "onCommand:dgm.run",
     "onCommand:dgm.validate",
-    "onCommand:dgm.version"
+    "onCommand:dgm.version",
+    "onCommand:dgm.restartLanguageServer"
   ],
   "contributes": {
     "languages": [
@@ -63,8 +64,23 @@
         "title": "Validate DGM File",
         "category": "DGM",
         "enablement": "resourceExtname == .dgm"
+      },
+      {
+        "command": "dgm.restartLanguageServer",
+        "title": "Restart DGM Language Server",
+        "category": "DGM"
       }
     ],
+    "configuration": {
+      "title": "DGM",
+      "properties": {
+        "dgm.binaryPath": {
+          "type": "string",
+          "default": "dgm",
+          "description": "Path to the DGM executable used for run, validate, and LSP."
+        }
+      }
+    },
     "menus": {
       "commandPalette": [
         {
@@ -74,8 +90,14 @@
         {
           "command": "dgm.validate",
           "when": "resourceExtname == .dgm"
+        },
+        {
+          "command": "dgm.restartLanguageServer"
         }
       ]
     }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }

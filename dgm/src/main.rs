@@ -1,9 +1,10 @@
 use dgm::interpreter::Interpreter;
 use dgm::lexer::Lexer;
 use dgm::parser::Parser;
-use dgm::{run_named_source, validate_named_source};
-use std::sync::Arc;
 use std::io::{self, Write};
+use std::sync::Arc;
+
+use dgm::{analyze_named_source, run_named_source};
 
 fn run_file(path: &str) {
     // [B] FILE CONVENTION: Enforce .dgm extension
@@ -34,9 +35,19 @@ fn validate_file(path: &str) {
 
     match std::fs::read_to_string(path) {
         Ok(source) => {
-            if let Err(e) = validate_named_source(&source, path) {
-                eprint!("{}", e.render(path, &source));
-                std::process::exit(1);
+            match analyze_named_source(&source, path) {
+                Ok(result) => {
+                    if !result.diagnostics.is_empty() {
+                        for error in &result.diagnostics {
+                            eprint!("{}", error.render(path, &source));
+                        }
+                        std::process::exit(1);
+                    }
+                }
+                Err(error) => {
+                    eprint!("{}", error.render(path, &source));
+                    std::process::exit(1);
+                }
             }
         }
         Err(e) => {
@@ -46,8 +57,15 @@ fn validate_file(path: &str) {
     }
 }
 
+fn run_lsp() {
+    if let Err(error) = dgm::lsp::run_stdio() {
+        eprintln!("LSP server error: {error}");
+        std::process::exit(1);
+    }
+}
+
 fn run_repl() {
-    println!("DGM 0.2.0 — Interactive REPL");
+    println!("DGM 0.3.0 — Interactive REPL");
     println!("Type 'exit' to quit, 'help' for commands\n");
     let mut interp = Interpreter::new(Arc::new("<repl>".to_string()));
 
@@ -71,7 +89,7 @@ fn run_repl() {
                     println!("  help       — show this help");
                     println!("  .clear     — clear screen");
                     println!("\nAvailable modules: math, io, fs, os, json, time, http, crypto, regex, net, thread, xml");
-                    println!("Use: imprt <module>\n");
+                    println!("Use: import <module>\n");
                     continue;
                 }
                 if line == ".clear" {
@@ -108,16 +126,17 @@ fn dirs_home() -> Option<String> {
 }
 
 fn print_version() {
-    println!("DGM Programming Language v0.2.0");
+    println!("DGM Programming Language v0.3.0");
     println!("Created by Dang Gia Minh");
     println!("Built with Rust — tree-walk interpreter");
 }
 
 fn print_help() {
-    println!("DGM Programming Language v0.2.0\n");
+    println!("DGM Programming Language v0.3.0\n");
     println!("USAGE:");
     println!("  dgm run <file.dgm>       Run a DGM script");
-    println!("  dgm validate <file.dgm>  Validate syntax without executing");
+    println!("  dgm validate <file.dgm>  Validate syntax and semantics");
+    println!("  dgm lsp                  Start the DGM language server");
     println!("  dgm repl                 Start interactive REPL");
     println!("  dgm version              Show version info");
     println!("  dgm help                 Show this help\n");
@@ -165,6 +184,7 @@ fn main() {
                 std::process::exit(1);
             }
         }
+        Some("lsp") => run_lsp(),
         Some("repl") => run_repl(),
         Some("version") | Some("--version") | Some("-v") => print_version(),
         Some("help") | Some("--help") | Some("-h") => print_help(),

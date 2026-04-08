@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "def c() {\n  throw \"err\"\n}\n\ndef b() {\n  c()\n}\n\ndef a() {\n  b()\n}\n\na()\n",
+  "input": "fn c() {\n  throw \"err\"\n}\n\nfn b() {\n  c()\n}\n\nfn a() {\n  b()\n}\n\na()\n",
   "tokens": null,
   "ast": null,
   "status": 1,

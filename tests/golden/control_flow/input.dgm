@@ -1,7 +1,7 @@
 let value = 2
-iff value == 1 {
+if value == 1 {
   writ("one")
-} els {
+} else {
   writ("other")
 }
 match value {

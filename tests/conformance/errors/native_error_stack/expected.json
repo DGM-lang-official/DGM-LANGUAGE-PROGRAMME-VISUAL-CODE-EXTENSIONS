@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "def crash() {\n  push(1, 2)\n}\n\ncrash()\n",
+  "input": "fn crash() {\n  push(1, 2)\n}\n\ncrash()\n",
   "tokens": null,
   "ast": null,
   "status": 1,

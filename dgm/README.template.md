@@ -63,6 +63,7 @@ DGM is a **tree-walk interpreted** programming language with:
 
 - A **hand-written lexer and recursive descent parser** — no yacc, no pest, no nom
 - A **single-pass tree-walk interpreter** with lexical scoping via `Rc<RefCell<>>`
+- A **semantic analyzer and Rust LSP server** powering diagnostics, navigation, completion, rename, and formatting
 - A **13-module standard library** covering I/O, networking, cryptography, JSON, XML, and more
 - A **thread-local security layer** with filesystem sandboxing, exec gating, and network host whitelisting
 - A **byte-level JSON encoder** using `itoa` and `ryu` — zero intermediate `serde_json::Value` allocations
@@ -76,14 +77,15 @@ DGM is a **tree-walk interpreted** programming language with:
 |---|---|
 | Dynamic typing | Int, Float, Str, Bool, Null, List, Map, Function, Instance |
 | First-class functions | Closures, lambdas, higher-order functions |
-| Classes & inheritance | `cls`, `new`, `ths`, single-parent inheritance |
+| Classes & inheritance | `class`, `new`, `this`, single-parent inheritance |
 | Exception handling | `try / catch / finally / throw` |
 | Pattern matching | `match` with `=>` arms |
 | String interpolation | `f"Hello, {name}!"` |
-| Module system | `imprt <module>` with optional `as` alias — lazy loading |
+| Module system | `import <module>` with optional `as` alias — lazy loading |
 | REPL | Interactive shell with history (`rustyline`) |
 | HTTP server | Built-in TCP server via `tiny_http` |
 | Security sandboxing | Filesystem sandbox, exec gate, network whitelist |
+| Tooling | Semantic `validate`, built-in formatter, Rust LSP server |
 
 ---
 
@@ -155,12 +157,12 @@ These snippets are generated from executable fixtures in `../tests/examples` so 
 let x = 42
 let pi = 3.14159
 let name = "DGM"
-let active = tru
-let empty = nul
+let active = true
+let empty = null
 
 # Lists
 let nums = [1, 2, 3, 4, 5]
-let mixed = [1, "two", tru, nul]
+let mixed = [1, "two", true, null]
 
 # Maps (dictionaries)
 let person = {"name": "Alice", "age": 30}
@@ -169,7 +171,7 @@ let person = {"name": "Alice", "age": 30}
 let greeting = f"Hello, {name}! You have {len(nums)} items."
 ```
 
-Canonical literals are `tru`, `fals`, `nul`. Compatibility aliases `true`, `false`, `null` are also accepted by the lexer.
+Canonical literals are `true`, `false`, `null`. Legacy aliases `tru`, `fals`, and `nul` are still accepted by the lexer.
 
 ### Operators
 
@@ -187,18 +189,18 @@ let g = 0xFF & 0x0F    # 15
 let h = 1 << 4          # 16
 
 # Comparison
-let eq  = (a == b)    # fals
-let neq = (a != b)    # tru
-let lt  = (a < 20)    # tru
+let eq  = (a == b)    # false
+let neq = (a != b)    # true
+let lt  = (a < 20)    # true
 
 # Logical
-let both = tru and fals    # fals
-let either = tru or fals   # tru
-let inv = not tru           # fals
+let both = true and false    # false
+let either = true or false   # true
+let inv = not true           # false
 
 # Membership
-let inList = 3 in [1, 2, 3, 4]    # tru
-let inMap  = "name" in person       # tru
+let inList = 3 in [1, 2, 3, 4]    # true
+let inMap  = "name" in person       # true
 
 # Compound assignment
 x += 5
@@ -211,11 +213,11 @@ x /= 2
 
 ```dgm
 # if / else if / else
-iff x > 0 {
+if x > 0 {
     writ("positive")
 } elseif x == 0 {
     writ("zero")
-} els {
+} else {
     writ("negative")
 }
 
@@ -223,25 +225,25 @@ iff x > 0 {
 let label = x > 0 ? "pos" : "non-pos"
 
 # for loop
-fr i in range(10) {
+for i in range(10) {
     writ(i)
 }
 
-fr item in ["a", "b", "c"] {
+for item in ["a", "b", "c"] {
     writ(item)
 }
 
 # while loop
 let n = 5
-whl n > 0 {
+while n > 0 {
     writ(n)
     n -= 1
 }
 
 # break / continue
-fr i in range(100) {
-    iff i == 5 { brk }
-    iff i % 2 == 0 { cont }
+for i in range(100) {
+    if i == 5 { break }
+    if i % 2 == 0 { continue }
     writ(i)
 }
 ```
@@ -250,29 +252,29 @@ fr i in range(100) {
 
 ```dgm
 # Function definition
-def add(a, b) {
-    retrun a + b
+fn add(a, b) {
+    return a + b
 }
 
 # Default usage
 let result = add(3, 4)    # 7
 
 # Lambda / anonymous function
-let square = |x| x * x
+let square = lam(x) => x * x
 writ(square(5))    # 25
 
 # Higher-order functions
 let nums = [1, 2, 3, 4, 5]
-let doubled = map(nums, |x| x * 2)
-let evens   = filter(nums, |x| x % 2 == 0)
-let total   = reduce(nums, 0, |acc, x| acc + x)
+let doubled = map(nums, lam(x) => x * 2)
+let evens   = filter(nums, lam(x) => x % 2 == 0)
+let total   = reduce(nums, 0, lam(acc, x) => acc + x)
 
 # Closures
-def make_counter() {
+fn make_counter() {
     let count = 0
-    retrun def() {
+    return lam() => {
         count += 1
-        retrun count
+        return count
     }
 }
 let counter = make_counter()
@@ -283,30 +285,30 @@ writ(counter())    # 2
 ### Classes
 
 ```dgm
-cls Animal {
-    def init(name, sound) {
-        ths.name = name
-        ths.sound = sound
+class Animal {
+    fn init(name, sound) {
+        this.name = name
+        this.sound = sound
     }
 
-    def speak() {
-        writ(f"{ths.name} says {ths.sound}!")
+    fn speak() {
+        writ(f"{this.name} says {this.sound}!")
     }
 
-    def to_str() {
-        retrun f"Animal({ths.name})"
+    fn to_str() {
+        return f"Animal({this.name})"
     }
 }
 
 # Inheritance
-cls Dog extnd Animal {
-    def init(name) {
-        ths.name = name
-        ths.sound = "Woof"
+class Dog extends Animal {
+    fn init(name) {
+        this.name = name
+        this.sound = "Woof"
     }
 
-    def fetch(item) {
-        writ(f"{ths.name} fetches the {item}!")
+    fn fetch(item) {
+        writ(f"{this.name} fetches the {item}!")
     }
 }
 
@@ -328,11 +330,11 @@ try {
 }
 
 # Throw an error
-def divide(a, b) {
-    iff b == 0 {
+fn divide(a, b) {
+    if b == 0 {
         throw "Division by zero"
     }
-    retrun a / b
+    return a / b
 }
 ```
 
@@ -353,18 +355,18 @@ match status {
 
 ## Standard Library
 
-Use `imprt <module>` to load a module:
+Use `import <module>` to load a module:
 
 ```dgm
-imprt json
-let data = json.parse('{"key": "value"}')
+import json
+let data = json.parse("{\"key\": \"value\"}")
 ```
 
 ### math
 
 ```dgm
-imprt math
-imprt math as m
+import math
+import math as m
 math.sin(math.PI / 2)       # 1.0
 math.sqrt(16)               # 4.0
 m.sqrt(9)                   # 3.0
@@ -378,7 +380,7 @@ math.log(math.E)            # 1.0
 ### io
 
 ```dgm
-imprt io
+import io
 let content = io.read_file("data.txt")
 io.write_file("output.txt", "Hello!")
 io.append_file("log.txt", "new line\n")
@@ -388,7 +390,7 @@ io.mkdir("new_folder")
 io.rename("old.txt", "new.txt")
 io.copy("src.txt", "dst.txt")
 io.delete("file.txt")
-let exists = io.exists("file.txt")    # tru / fals
+let exists = io.exists("file.txt")    # true / false
 let size   = io.file_size("file.txt") # bytes
 let path   = io.abs_path("./relative")
 let cwd    = io.cwd()
@@ -397,7 +399,7 @@ let cwd    = io.cwd()
 ### fs — Sandboxed Filesystem
 
 ```dgm
-imprt fs
+import fs
 # All operations respect the sandbox_root security config
 
 let content    = fs.read("data.txt")              # str
@@ -421,7 +423,7 @@ let meta       = fs.metadata("file.txt")          # map {size, is_file, is_dir, 
 ### os
 
 ```dgm
-imprt os
+import os
 let result = os.exec("ls -la")           # {stdout, stderr, code, ok}
 let proc   = os.spawn("long_process")    # {pid, handle, ok}
 let done   = os.wait(proc.handle, 5000) # {code, ok, timed_out}
@@ -441,8 +443,8 @@ let cpus   = os.num_cpus()
 ### json
 
 ```dgm
-imprt json
-let parsed = json.parse('{"name":"Alice","age":30}')
+import json
+let parsed = json.parse("{\"name\":\"Alice\",\"age\":30}")
 let str    = json.stringify(parsed)         # fast byte-level encode
 let pretty = json.pretty(parsed)            # indented
 let resp   = json.raw_parts("users", data) # {"ok":true,"users":<data>}
@@ -451,13 +453,13 @@ let resp   = json.raw_parts("users", data) # {"ok":true,"users":<data>}
 ### http
 
 ```dgm
-imprt http
+import http
 
 # HTTP client
 let res = http.get("https://api.example.com/users")
 writ(res.status)     # 200
 writ(res.body)       # response body string
-writ(res.ok)         # tru
+writ(res.ok)         # true
 
 let created = http.post("https://api.example.com/users",
     json.stringify({"name": "Alice"}))
@@ -474,7 +476,7 @@ http.serve(8080, routes)
 ### crypto
 
 ```dgm
-imprt crypto
+import crypto
 let hash     = crypto.sha256("hello world")
 let md5hash  = crypto.md5("hello world")
 let encoded  = crypto.base64_encode("binary data")
@@ -486,8 +488,8 @@ let randbytes = crypto.random_bytes(32)    # list[int]
 ### regex
 
 ```dgm
-imprt regex
-let match  = regex.test("[0-9]+", "abc123def")     # tru
+import regex
+let match  = regex.test("[0-9]+", "abc123def")     # true
 let found  = regex.find("[0-9]+", "abc123def")     # "123"
 let all    = regex.find_all("[0-9]+", "a1b2c3")    # ["1","2","3"]
 let groups = regex.match("(\\w+)@(\\w+)", "user@host") # list
@@ -497,7 +499,7 @@ let rep    = regex.replace("[aeiou]", "hello", "*")    # "h*ll*"
 ### net
 
 ```dgm
-imprt net
+import net
 let sock = net.connect("127.0.0.1", 9000)
 net.send(sock, "Hello, server!")
 let data = net.recv(sock, 4096)
@@ -509,7 +511,7 @@ let server = net.listen("0.0.0.0", 9000)
 ### time
 
 ```dgm
-imprt time
+import time
 let ts_sec = time.now()                              # unix seconds
 let ts_ms  = time.now_ms()                           # unix milliseconds
 let fmt    = time.format(ts_sec, "%Y-%m-%d %H:%M:%S")
@@ -520,7 +522,7 @@ let delta  = time.elapsed(ts_ms)
 ### thread
 
 ```dgm
-imprt thread
+import thread
 let cpus = thread.available_cpus()
 thread.sleep(500)
 writ(cpus)
@@ -529,7 +531,7 @@ writ(cpus)
 ### xml
 
 ```dgm
-imprt xml
+import xml
 let doc = xml.parse("<root><item>hello</item></root>")
 let str = xml.stringify(doc)
 let val = xml.query(doc, "root.item")
@@ -539,20 +541,22 @@ writ(val.text)
 ### security
 
 ```dgm
-imprt security
+import security
 
 # Configure runtime security policy
 security.configure({
-    "allow_fs":       tru,
-    "allow_exec":     fals,
-    "allow_net":      tru,
+    "allow_fs":       true,
+    "allow_exec":     false,
+    "allow_net":      false,
     "sandbox_root":   "/app/data",
-    "allowed_hosts":  ["api.example.com", "cdn.trusted.io"]
+    "allowed_hosts":  ["api.example.com", "cdn.trusted.io"],
+    "allowed_programs": ["git", "node"],
+    "max_http_body_bytes": 1048576
 })
 
 # Check current config
 let status = security.status()
-writ(status.allow_exec)     # fals
+writ(status.allow_exec)     # false
 writ(status.sandbox_root)   # /app/data
 ```
 
@@ -567,10 +571,12 @@ DGM provides a **thread-local security configuration** with no global mutex over
 | Setting | Type | Default | Effect |
 |---|---|---|---|
 | `allow_fs` | bool | `true` | Gates all `fs.*` operations |
-| `allow_exec` | bool | `true` | Gates `os.exec`, `os.spawn`, `os.run`, `os.run_timeout` |
-| `allow_net` | bool | `true` | Gates `net.*` operations |
+| `allow_exec` | bool | `false` | Gates `os.exec`, `os.spawn`, `os.run`, `os.run_timeout` |
+| `allow_net` | bool | `false` | Gates `net.*` and `http.*` operations |
 | `sandbox_root` | str \| null | `null` | Restricts `fs.*` to a directory subtree |
 | `allowed_hosts` | list \| null | `null` | Restricts `net.*` to specific hosts |
+| `allowed_programs` | list \| null | `null` | Restricts `os.run*` to an allowlist and disables shell exec APIs |
+| `max_http_body_bytes` | int | `1048576` | Caps HTTP response bodies before parsing |
 
 ### Sandbox path resolution
 
@@ -715,6 +721,9 @@ cargo check
 
 # Rebuild generated docs from executable examples
 node ../scripts/build_docs.js
+
+# Check docs are in sync (same command CI uses)
+node ../scripts/build_docs.js --check
 ```
 
 Test suites are organized around language contracts instead of ad-hoc unit checks:
@@ -723,6 +732,12 @@ Test suites are organized around language contracts instead of ad-hoc unit check
 - [`../tests/conformance`](/home/danggiaminh/Downloads/dgm-source/tests/conformance) locks lexer, parser, runtime, import, and error behavior behind versioned snapshots.
 - [`../tests/golden`](/home/danggiaminh/Downloads/dgm-source/tests/golden) captures end-to-end scenarios for syntax, control flow, OOP, modules, and runtime failures.
 - [`../tests/examples`](/home/danggiaminh/Downloads/dgm-source/tests/examples) are executable documentation examples and fail CI when docs drift from the runtime.
+
+Documentation workflow:
+- [`README.template.md`](/home/danggiaminh/Downloads/dgm-source/dgm/README.template.md) is the editable source for this README.
+- [`../docs/manifest.json`](/home/danggiaminh/Downloads/dgm-source/docs/manifest.json) drives generated CLI/module sections across docs.
+- [`../scripts/build_docs.js`](/home/danggiaminh/Downloads/dgm-source/scripts/build_docs.js) regenerates checked-in README content.
+- `.github/workflows/ci.yml` rejects stale generated docs with `node scripts/build_docs.js --check`.
 
 ---
 

@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "input": "imprt no_such_module\n",
+  "input": "import no_such_module\n",
   "tokens": null,
   "ast": null,
   "status": 1,
   "stdout": "",
-  "stderr": "[E200] cannot import 'no_such_module': No such file or directory (os error 2)\n --> input.dgm:1:1\n  |\n1 | imprt no_such_module\n  | ^\nStack trace:\n  at <module no_such_module> (no_such_module.dgm:1:1)\n",
+  "stderr": "[E200] cannot import 'no_such_module': No such file or directory (os error 2)\n --> input.dgm:1:1\n  |\n1 | import no_such_module\n  | ^\nStack trace:\n  at <module no_such_module> (no_such_module.dgm:1:1)\n",
   "error": {
     "code": "E200",
     "message": "cannot import 'no_such_module': No such file or directory (os error 2)",

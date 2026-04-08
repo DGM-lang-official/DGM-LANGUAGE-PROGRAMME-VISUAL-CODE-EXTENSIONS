@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "imprt \"helpers\"\nlet add = helpers.make_adder(3)\nwrit(add(5))\n",
+  "input": "import \"helpers\"\nlet add = helpers.make_adder(3)\nwrit(add(5))\n",
   "tokens": null,
   "ast": null,
   "status": 0,

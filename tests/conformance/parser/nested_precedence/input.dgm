@@ -1,1 +1,1 @@
-let value = 1 + 2 * 3 == 7 and tru
+let value = 1 + 2 * 3 == 7 and true

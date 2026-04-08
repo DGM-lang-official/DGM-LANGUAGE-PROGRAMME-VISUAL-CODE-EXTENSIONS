@@ -1,0 +1,12 @@
+imprt math as m
+
+def root(n) {
+  retrun m.sqrt(n)
+}
+
+let flag = tru
+iff flag {
+  writ(root(9))
+} els {
+  writ(0)
+}

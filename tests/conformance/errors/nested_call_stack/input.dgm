@@ -1,12 +1,12 @@
-def c() {
+fn c() {
   throw "err"
 }
 
-def b() {
+fn b() {
   c()
 }
 
-def a() {
+fn a() {
   b()
 }
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "let value = 1 + 2 * 3 == 7 and tru\n",
+  "input": "let value = 1 + 2 * 3 == 7 and true\n",
   "tokens": null,
   "ast": [
     {
@@ -12,23 +12,33 @@
               "BinOp": {
                 "left": {
                   "BinOp": {
-                    "left": { "IntLit": 1 },
+                    "left": {
+                      "IntLit": 1
+                    },
                     "op": "+",
                     "right": {
                       "BinOp": {
-                        "left": { "IntLit": 2 },
+                        "left": {
+                          "IntLit": 2
+                        },
                         "op": "*",
-                        "right": { "IntLit": 3 }
+                        "right": {
+                          "IntLit": 3
+                        }
                       }
                     }
                   }
                 },
                 "op": "==",
-                "right": { "IntLit": 7 }
+                "right": {
+                  "IntLit": 7
+                }
               }
             },
             "op": "and",
-            "right": { "BoolLit": true }
+            "right": {
+              "BoolLit": true
+            }
           }
         }
       }

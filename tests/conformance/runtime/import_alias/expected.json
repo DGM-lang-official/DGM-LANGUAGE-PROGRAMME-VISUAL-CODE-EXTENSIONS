@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "imprt math as m\nwrit(m.sqrt(9))\n",
+  "input": "import math as m\nwrit(m.sqrt(9))\n",
   "tokens": null,
   "ast": null,
   "status": 0,

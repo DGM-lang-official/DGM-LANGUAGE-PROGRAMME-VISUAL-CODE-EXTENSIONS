@@ -1,4 +1,4 @@
-def boom() {
+fn boom() {
   throw "module err"
 }
 

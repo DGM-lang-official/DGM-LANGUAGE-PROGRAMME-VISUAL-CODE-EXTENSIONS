@@ -1,2 +1,2 @@
-imprt math as m
+import math as m
 writ(m.sqrt(9))

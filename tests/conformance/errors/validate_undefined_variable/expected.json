@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "input": "let answer = missing\n",
+  "tokens": null,
+  "ast": null,
+  "status": 1,
+  "stdout": "",
+  "stderr": "[E100] undefined variable 'missing'\n --> input.dgm:1:14\n  |\n1 | let answer = missing\n  |              ^\n",
+  "error": {
+    "code": "E100",
+    "message": "undefined variable 'missing'",
+    "span": {
+      "file": "input.dgm",
+      "line": 1,
+      "col": 14
+    },
+    "stack": []
+  }
+}

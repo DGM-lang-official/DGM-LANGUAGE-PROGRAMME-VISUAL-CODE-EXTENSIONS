@@ -24,6 +24,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+          cache-dependency-path: vscode-dgm/package-lock.json
+
+      - name: Install extension dependencies
+        run: npm ci
+        working-directory: vscode-dgm
 
       - name: Run Rust test suites
         run: cargo test
@@ -41,5 +47,5 @@ jobs:
         working-directory: vscode-dgm
 
       - name: Package VS Code extension
-        run: npx @vscode/vsce package --no-dependencies
+        run: npx @vscode/vsce package
         working-directory: vscode-dgm

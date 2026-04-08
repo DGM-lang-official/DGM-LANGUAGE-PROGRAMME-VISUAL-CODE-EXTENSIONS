@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "cls Animal {\n  def speak() { retrun \"base\" }\n}\n\ncls Dog extends Animal {\n  def speak() { retrun \"woof\" }\n}\n\nwrit(new Dog().speak())\n",
+  "input": "class Animal {\n  fn speak() { return \"base\" }\n}\n\nclass Dog extends Animal {\n  fn speak() { return \"woof\" }\n}\n\nwrit(new Dog().speak())\n",
   "tokens": null,
   "ast": null,
   "status": 0,

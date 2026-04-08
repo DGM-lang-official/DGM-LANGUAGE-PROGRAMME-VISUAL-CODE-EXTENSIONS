@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "imprt counter\nimprt counter\nwrit(counter.value)\n",
+  "input": "import counter\nimport counter\nwrit(counter.value)\n",
   "tokens": null,
   "ast": null,
   "status": 0,

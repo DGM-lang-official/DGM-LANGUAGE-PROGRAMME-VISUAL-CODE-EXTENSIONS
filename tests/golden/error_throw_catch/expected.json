@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "def divide(a, b) {\n  iff b == 0 {\n    throw \"zero\"\n  }\n  retrun a / b\n}\n\ntry {\n  writ(divide(6, 0))\n} catch (err) {\n  writ(err)\n}\n\nwrit(divide(6, 2))\n",
+  "input": "fn divide(a, b) {\n  if b == 0 {\n    throw \"zero\"\n  }\n  return a / b\n}\n\ntry {\n  writ(divide(6, 0))\n} catch (err) {\n  writ(err)\n}\n\nwrit(divide(6, 2))\n",
   "tokens": null,
   "ast": null,
   "status": 0,

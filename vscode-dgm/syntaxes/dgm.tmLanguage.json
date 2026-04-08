@@ -22,6 +22,11 @@
         {
           "name": "comment.line.dgm",
           "match": "#.*?$"
+        },
+        {
+          "name": "comment.block.dgm",
+          "begin": "/\\*",
+          "end": "\\*/"
         }
       ]
     },
@@ -103,11 +108,11 @@
       "patterns": [
         {
           "name": "keyword.control.dgm",
-          "match": "\\b(iff|els|elseif|whl|fr|brk|cont|retrun|try|catch|finally|throw|match)\\b"
+          "match": "\\b(iff|if|els|else|elseif|whl|while|fr|for|brk|break|cont|continue|retrun|return|try|catch|finally|throw|match)\\b"
         },
         {
           "name": "keyword.declaration.dgm",
-          "match": "\\b(let|def|cls|new|extends|imprt)\\b"
+          "match": "\\b(let|const|def|fn|cls|class|new|extends|imprt|import)\\b"
         },
         {
           "name": "keyword.operator.dgm",
@@ -115,7 +120,7 @@
         },
         {
           "name": "keyword.other.dgm",
-          "match": "\\b(writ|ths|lam)\\b"
+          "match": "\\b(writ|ths|this|lam|super)\\b"
         }
       ]
     },

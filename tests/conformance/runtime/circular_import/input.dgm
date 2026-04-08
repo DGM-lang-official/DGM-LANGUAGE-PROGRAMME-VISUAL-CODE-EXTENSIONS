@@ -1,2 +1,2 @@
-imprt a
+import a
 writ(a.a_done)

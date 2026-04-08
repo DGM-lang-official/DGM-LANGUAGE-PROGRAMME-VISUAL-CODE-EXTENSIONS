@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "let value = 2\niff value == 1 {\n  writ(\"one\")\n} els {\n  writ(\"other\")\n}\nmatch value {\n  1 => { writ(\"uno\") }\n  2 => { writ(\"dos\") }\n  _ => { writ(\"fallback\") }\n}\n",
+  "input": "let value = 2\nif value == 1 {\n  writ(\"one\")\n} else {\n  writ(\"other\")\n}\nmatch value {\n  1 => { writ(\"uno\") }\n  2 => { writ(\"dos\") }\n  _ => { writ(\"fallback\") }\n}\n",
   "tokens": null,
   "ast": null,
   "status": 0,

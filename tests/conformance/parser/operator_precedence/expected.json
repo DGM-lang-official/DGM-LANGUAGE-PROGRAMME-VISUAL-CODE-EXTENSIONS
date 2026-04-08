@@ -9,12 +9,18 @@
         "value": {
           "BinOp": {
             "op": "+",
-            "left": { "IntLit": 1 },
+            "left": {
+              "IntLit": 1
+            },
             "right": {
               "BinOp": {
                 "op": "*",
-                "left": { "IntLit": 2 },
-                "right": { "IntLit": 3 }
+                "left": {
+                  "IntLit": 2
+                },
+                "right": {
+                  "IntLit": 3
+                }
               }
             }
           }
@@ -26,9 +32,15 @@
         "name": "choice",
         "value": {
           "Ternary": {
-            "condition": { "BoolLit": true },
-            "then_expr": { "IntLit": 10 },
-            "else_expr": { "IntLit": 20 }
+            "condition": {
+              "BoolLit": true
+            },
+            "then_expr": {
+              "IntLit": 10
+            },
+            "else_expr": {
+              "IntLit": 20
+            }
           }
         }
       }

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "input": "def mapper(x) {\n  iff (x == 2) {\n    throw \"boom\"\n  }\n  retrun x\n}\n\nmap([1, 2, 3], mapper)\n",
+  "input": "fn mapper(x) {\n  if (x == 2) {\n    throw \"boom\"\n  }\n  return x\n}\n\nmap([1, 2, 3], mapper)\n",
   "tokens": null,
   "ast": null,
   "status": 1,
