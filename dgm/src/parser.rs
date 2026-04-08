@@ -284,6 +284,7 @@ impl Parser {
         Ok(stmts)
     }
 
+    #[allow(dead_code)]
     fn parse_param_list(&mut self) -> Result<Vec<String>, DgmError> {
         let mut params = vec![];
         if self.check(TokenKind::RParen) {

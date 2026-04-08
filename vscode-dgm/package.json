@@ -1,8 +1,8 @@
 {
-  "name": "dgm-language",
-  "displayName": "DGM Language Support",
-  "description": "Syntax highlighting, hover, same-file navigation, snippets, and run/validate commands for DGM",
-  "version": "0.2.0",
+  "name": "dgm-devkit",
+  "displayName": "DGM DevKit",
+  "description": "Language tools for DGM (DangGiaMinh)",
+  "version": "0.2.1",
   "publisher": "dgm-lang",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {

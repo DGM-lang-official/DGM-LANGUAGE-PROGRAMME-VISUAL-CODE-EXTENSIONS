@@ -80,7 +80,16 @@ fn parse_element(reader: &mut Reader<&[u8]>, depth: usize) -> Result<Option<DgmV
                             let decoded = String::from_utf8_lossy(t.as_ref());
                             text_buf.push_str(&decoded);
                         }
-                        Ok(Event::End(_)) => break,
+                        Ok(Event::End(ref end)) => {
+                            let end_tag = String::from_utf8_lossy(end.name().as_ref()).into_owned();
+                            if end_tag != tag {
+                                return Err(rt(&format!(
+                                    "xml.parse: mismatched closing tag </{}> for <{}>",
+                                    end_tag, tag
+                                )));
+                            }
+                            break;
+                        }
                         Ok(Event::Eof) => return Err(rt("xml.parse: unexpected EOF")),
                         Err(e) => return Err(rt(&format!("xml.parse: {}", e))),
                         _ => {}
@@ -134,7 +143,16 @@ fn parse_children_from_start(
                 let decoded = String::from_utf8_lossy(t.as_ref());
                 text_buf.push_str(&decoded);
             }
-            Ok(Event::End(_)) => break,
+            Ok(Event::End(ref end)) => {
+                let end_tag = String::from_utf8_lossy(end.name().as_ref()).into_owned();
+                if end_tag != tag {
+                    return Err(rt(&format!(
+                        "xml.parse: mismatched closing tag </{}> for <{}>",
+                        end_tag, tag
+                    )));
+                }
+                break;
+            }
             Ok(Event::Eof) => return Err(rt("xml.parse: unexpected EOF")),
             Err(e) => return Err(rt(&format!("xml.parse: {}", e))),
             _ => {}
@@ -340,6 +358,38 @@ mod tests {
     }
 
     #[test]
+    fn parse_and_stringify_preserve_basic_structure() {
+        let doc = parse_doc(r#"<root lang="en"><item id="1">hello</item><empty/></root>"#);
+        match &doc {
+            DgmValue::Map(node) => {
+                let map = node.borrow();
+                assert!(matches!(map.get("tag"), Some(DgmValue::Str(tag)) if tag == "root"));
+                match map.get("attrs") {
+                    Some(DgmValue::Map(attrs)) => {
+                        assert!(matches!(attrs.borrow().get("lang"), Some(DgmValue::Str(lang)) if lang == "en"));
+                    }
+                    other => panic!("expected attrs map, got {:?}", other),
+                }
+                match map.get("children") {
+                    Some(DgmValue::List(children)) => assert_eq!(children.borrow().len(), 2),
+                    other => panic!("expected children list, got {:?}", other),
+                }
+            }
+            other => panic!("expected root node map, got {}", other),
+        }
+
+        let xml = xml_stringify(vec![doc]).unwrap();
+        match xml {
+            DgmValue::Str(text) => {
+                assert!(text.contains(r#"<root lang="en">"#));
+                assert!(text.contains(r#"<item id="1">hello</item>"#));
+                assert!(text.contains("<empty/>"));
+            }
+            other => panic!("expected string, got {}", other),
+        }
+    }
+
+    #[test]
     fn query_returns_root_and_nested_child() {
         let doc = parse_doc("<root><item>hello</item><other>world</other></root>");
 
@@ -362,5 +412,11 @@ mod tests {
         let doc = parse_doc("<root><item>hello</item></root>");
         let result = xml_query(vec![doc, DgmValue::Str("root.missing".into())]).unwrap();
         assert!(matches!(result, DgmValue::Null));
+    }
+
+    #[test]
+    fn parse_rejects_mismatched_closing_tags() {
+        let result = xml_parse(vec![DgmValue::Str("<root><item></root>".into())]);
+        assert!(result.is_err());
     }
 }

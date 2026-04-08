@@ -21,6 +21,8 @@ pub enum ErrorCode {
     RuntimeError,
     ImportFail,
     CircularImport,
+    ProgramNotAllowed,
+    ShellExecutionDisabled,
     ThrownValue,
 }
 
@@ -38,6 +40,8 @@ impl ErrorCode {
             ErrorCode::RuntimeError => "E199",
             ErrorCode::ImportFail => "E200",
             ErrorCode::CircularImport => "E201",
+            ErrorCode::ProgramNotAllowed => "E410",
+            ErrorCode::ShellExecutionDisabled => "E411",
             ErrorCode::ThrownValue => "E400",
         }
     }

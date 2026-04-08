@@ -1,5 +1,16 @@
 use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+
+use crate::error::{DgmError, ErrorCode};
+use crate::interpreter::{DgmValue, NativeFunction};
+use std::rc::Rc;
+
+#[derive(Debug, Clone)]
+pub enum ProgramPolicy {
+    AllowAll,
+    AllowList(HashSet<String>),
+}
 
 #[derive(Debug, Clone)]
 pub struct SecurityConfig {
@@ -8,16 +19,20 @@ pub struct SecurityConfig {
     pub allow_net: bool,
     pub sandbox_root: Option<PathBuf>,
     pub allowed_hosts: Option<Vec<String>>,
+    pub allowed_programs: ProgramPolicy,
+    pub max_http_body_bytes: usize,
 }
 
 impl Default for SecurityConfig {
     fn default() -> Self {
         Self {
             allow_fs: true,
-            allow_exec: true,
-            allow_net: true,
+            allow_exec: false,
+            allow_net: false,
             sandbox_root: None,
             allowed_hosts: None,
+            allowed_programs: ProgramPolicy::AllowAll,
+            max_http_body_bytes: 1_048_576,
         }
     }
 }
@@ -37,7 +52,7 @@ pub fn get_config() -> SecurityConfig {
 pub fn check_fs() -> Result<(), crate::error::DgmError> {
     let cfg = get_config();
     if !cfg.allow_fs {
-        return Err(crate::error::DgmError::runtime("fs: filesystem access denied by security policy",));
+        return Err(DgmError::runtime("fs: filesystem access denied by security policy"));
     }
     Ok(())
 }
@@ -45,7 +60,7 @@ pub fn check_fs() -> Result<(), crate::error::DgmError> {
 pub fn check_exec() -> Result<(), crate::error::DgmError> {
     let cfg = get_config();
     if !cfg.allow_exec {
-        return Err(crate::error::DgmError::runtime("os: exec access denied by security policy",));
+        return Err(DgmError::runtime("os: exec access denied by security policy"));
     }
     Ok(())
 }
@@ -53,9 +68,44 @@ pub fn check_exec() -> Result<(), crate::error::DgmError> {
 pub fn check_net() -> Result<(), crate::error::DgmError> {
     let cfg = get_config();
     if !cfg.allow_net {
-        return Err(crate::error::DgmError::runtime("net: network access denied by security policy",));
+        return Err(DgmError::runtime("net: network access denied by security policy"));
     }
     Ok(())
+}
+
+pub fn check_program(program: &str) -> Result<(), DgmError> {
+    check_exec()?;
+    let cfg = get_config();
+    match &cfg.allowed_programs {
+        ProgramPolicy::AllowAll => Ok(()),
+        ProgramPolicy::AllowList(allowlist) => {
+            let normalized = normalize_program_name(program);
+            if is_shell_program(&normalized) {
+                return Err(DgmError::runtime_code(
+                    ErrorCode::ShellExecutionDisabled,
+                    "os: shell execution disabled under allowlist",
+                ));
+            }
+            if !allowlist.contains(&normalized) {
+                return Err(DgmError::runtime_code(
+                    ErrorCode::ProgramNotAllowed,
+                    format!("os: program '{}' not allowed", normalized),
+                ));
+            }
+            Ok(())
+        }
+    }
+}
+
+pub fn check_shell_execution() -> Result<(), DgmError> {
+    check_exec()?;
+    match get_config().allowed_programs {
+        ProgramPolicy::AllowAll => Ok(()),
+        ProgramPolicy::AllowList(_) => Err(DgmError::runtime_code(
+            ErrorCode::ShellExecutionDisabled,
+            "os: shell execution disabled under allowlist",
+        )),
+    }
 }
 
 pub fn check_host(host: &str) -> Result<(), crate::error::DgmError> {
@@ -64,13 +114,28 @@ pub fn check_host(host: &str) -> Result<(), crate::error::DgmError> {
     if let Some(ref whitelist) = cfg.allowed_hosts {
         let h = host.to_lowercase();
         if !whitelist.iter().any(|allowed| h == allowed.to_lowercase()) {
-            return Err(crate::error::DgmError::runtime(format!(
+            return Err(DgmError::runtime(format!(
                 "net: host '{}' not in allowed hosts",
                 host
             )));
         }
     }
     Ok(())
+}
+
+pub fn normalize_program_name(program: &str) -> String {
+    Path::new(program)
+        .file_name()
+        .and_then(|name| name.to_str())
+        .filter(|name| !name.is_empty())
+        .unwrap_or(program)
+        .to_string()
+}
+
+fn is_shell_program(program_name: &str) -> bool {
+    ["sh", "bash", "zsh", "fish", "cmd", "powershell", "pwsh"]
+        .iter()
+        .any(|shell| program_name.eq_ignore_ascii_case(shell))
 }
 
 /// Normalize and validate path against sandbox_root.
@@ -85,7 +150,7 @@ pub fn resolve_sandboxed_path(raw: &str) -> Result<PathBuf, crate::error::DgmErr
         path.to_path_buf()
     } else {
         std::env::current_dir()
-            .map_err(|e| crate::error::DgmError::runtime(format!("fs: cannot get cwd: {}", e)))?
+            .map_err(|e| DgmError::runtime(format!("fs: cannot get cwd: {}", e)))?
             .join(path)
     };
 
@@ -95,7 +160,7 @@ pub fn resolve_sandboxed_path(raw: &str) -> Result<PathBuf, crate::error::DgmErr
     if let Some(ref root) = cfg.sandbox_root {
         let norm_root = normalize_path(root);
         if !normalized.starts_with(&norm_root) {
-            return Err(crate::error::DgmError::runtime(format!(
+            return Err(DgmError::runtime(format!(
                 "fs: path '{}' escapes sandbox root '{}'",
                 normalized.display(),
                 norm_root.display()
@@ -124,12 +189,6 @@ fn normalize_path(path: &Path) -> PathBuf {
     components.iter().collect()
 }
 
-// ─── DGM-exposed security configuration ───
-
-use std::collections::HashMap;
-use crate::interpreter::{DgmValue, NativeFunction};
-use std::rc::Rc;
-
 pub fn module() -> HashMap<String, DgmValue> {
     let mut m = HashMap::new();
     let fns: &[(&str, fn(Vec<DgmValue>) -> Result<DgmValue, crate::error::DgmError>)] = &[
@@ -150,7 +209,9 @@ pub fn module() -> HashMap<String, DgmValue> {
 
 /// security.configure(opts_map)
 /// Keys: "allow_fs" (bool), "allow_exec" (bool), "allow_net" (bool),
-///       "sandbox_root" (str|null), "allowed_hosts" (list of str | null)
+///       "sandbox_root" (str|null), "allowed_hosts" (list of str | null),
+///       "allowed_programs" (list of str | null),
+///       "max_http_body_bytes" (int)
 fn security_configure(a: Vec<DgmValue>) -> Result<DgmValue, crate::error::DgmError> {
     match a.first() {
         Some(DgmValue::Map(m)) => {
@@ -178,10 +239,35 @@ fn security_configure(a: Vec<DgmValue>) -> Result<DgmValue, crate::error::DgmErr
                 _ => {}
             }
 
+            match map.get("allowed_programs") {
+                Some(DgmValue::List(l)) => {
+                    let programs: HashSet<String> = l
+                        .borrow()
+                        .iter()
+                        .filter_map(|v| {
+                            if let DgmValue::Str(s) = v {
+                                Some(normalize_program_name(s))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+                    cfg.allowed_programs = ProgramPolicy::AllowList(programs);
+                }
+                Some(DgmValue::Null) => cfg.allowed_programs = ProgramPolicy::AllowAll,
+                _ => {}
+            }
+
+            if let Some(DgmValue::Int(n)) = map.get("max_http_body_bytes") {
+                if *n >= 0 {
+                    cfg.max_http_body_bytes = *n as usize;
+                }
+            }
+
             set_config(cfg);
             Ok(DgmValue::Bool(true))
         }
-        _ => Err(crate::error::DgmError::runtime("security.configure(opts_map) required",)),
+        _ => Err(DgmError::runtime("security.configure(opts_map) required")),
     }
 }
 
@@ -193,6 +279,10 @@ fn security_status(_a: Vec<DgmValue>) -> Result<DgmValue, crate::error::DgmError
     map.insert("allow_exec".into(), DgmValue::Bool(cfg.allow_exec));
     map.insert("allow_net".into(), DgmValue::Bool(cfg.allow_net));
     map.insert(
+        "max_http_body_bytes".into(),
+        DgmValue::Int(i64::try_from(cfg.max_http_body_bytes).unwrap_or(i64::MAX)),
+    );
+    map.insert(
         "sandbox_root".into(),
         cfg.sandbox_root.map(|p| DgmValue::Str(p.to_string_lossy().into_owned())).unwrap_or(DgmValue::Null),
     );
@@ -202,12 +292,26 @@ fn security_status(_a: Vec<DgmValue>) -> Result<DgmValue, crate::error::DgmError
             .map(|h| DgmValue::List(Rc::new(RefCell::new(h.into_iter().map(DgmValue::Str).collect()))))
             .unwrap_or(DgmValue::Null),
     );
+    map.insert(
+        "allowed_programs".into(),
+        match cfg.allowed_programs {
+            ProgramPolicy::AllowAll => DgmValue::Null,
+            ProgramPolicy::AllowList(programs) => {
+                let mut items: Vec<String> = programs.into_iter().collect();
+                items.sort();
+                DgmValue::List(Rc::new(RefCell::new(
+                    items.into_iter().map(DgmValue::Str).collect(),
+                )))
+            }
+        },
+    );
     Ok(DgmValue::Map(Rc::new(RefCell::new(map))))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
 
     #[test]
     fn test_normalize_path() {
@@ -224,12 +328,23 @@ mod tests {
             allow_net: true,
             sandbox_root: Some(PathBuf::from("/tmp/sandbox")),
             allowed_hosts: None,
+            allowed_programs: ProgramPolicy::AllowAll,
+            max_http_body_bytes: SecurityConfig::default().max_http_body_bytes,
         });
         assert!(resolve_sandboxed_path("/tmp/sandbox/file.txt").is_ok());
         assert!(resolve_sandboxed_path("/tmp/sandbox/sub/file.txt").is_ok());
         assert!(resolve_sandboxed_path("/tmp/sandbox/../etc/passwd").is_err());
         assert!(resolve_sandboxed_path("/etc/passwd").is_err());
         set_config(SecurityConfig::default());
+    }
+
+    #[test]
+    fn test_default_config_is_safe() {
+        let cfg = SecurityConfig::default();
+        assert!(cfg.allow_fs);
+        assert!(!cfg.allow_exec);
+        assert!(!cfg.allow_net);
+        assert!(matches!(cfg.allowed_programs, ProgramPolicy::AllowAll));
     }
 
     #[test]
@@ -240,6 +355,8 @@ mod tests {
             allow_net: true,
             sandbox_root: None,
             allowed_hosts: None,
+            allowed_programs: ProgramPolicy::AllowAll,
+            max_http_body_bytes: SecurityConfig::default().max_http_body_bytes,
         });
         assert!(resolve_sandboxed_path("/tmp/anything").is_err());
         set_config(SecurityConfig::default());
@@ -253,6 +370,8 @@ mod tests {
             allow_net: true,
             sandbox_root: None,
             allowed_hosts: None,
+            allowed_programs: ProgramPolicy::AllowAll,
+            max_http_body_bytes: SecurityConfig::default().max_http_body_bytes,
         });
         assert!(check_exec().is_err());
         set_config(SecurityConfig::default());
@@ -266,6 +385,8 @@ mod tests {
             allow_net: false,
             sandbox_root: None,
             allowed_hosts: None,
+            allowed_programs: ProgramPolicy::AllowAll,
+            max_http_body_bytes: SecurityConfig::default().max_http_body_bytes,
         });
         assert!(check_net().is_err());
         set_config(SecurityConfig::default());
@@ -279,10 +400,39 @@ mod tests {
             allow_net: true,
             sandbox_root: None,
             allowed_hosts: Some(vec!["example.com".into(), "api.test.io".into()]),
+            allowed_programs: ProgramPolicy::AllowAll,
+            max_http_body_bytes: SecurityConfig::default().max_http_body_bytes,
         });
         assert!(check_host("example.com").is_ok());
         assert!(check_host("EXAMPLE.COM").is_ok());
         assert!(check_host("evil.com").is_err());
+        set_config(SecurityConfig::default());
+    }
+
+    #[test]
+    fn test_program_allowlist_normalizes_binary_name() {
+        let mut allowed = HashSet::new();
+        allowed.insert("node".into());
+        set_config(SecurityConfig {
+            allow_fs: true,
+            allow_exec: true,
+            allow_net: true,
+            sandbox_root: None,
+            allowed_hosts: None,
+            allowed_programs: ProgramPolicy::AllowList(allowed),
+            max_http_body_bytes: SecurityConfig::default().max_http_body_bytes,
+        });
+        assert!(check_program("node").is_ok());
+        assert!(check_program("/usr/bin/node").is_ok());
+        assert!(matches!(
+            check_program("/bin/sh").unwrap_err().code,
+            ErrorCode::ShellExecutionDisabled
+        ));
+        assert!(check_program("/usr/bin/python").is_err());
+        assert!(matches!(
+            check_shell_execution().unwrap_err().code,
+            ErrorCode::ShellExecutionDisabled
+        ));
         set_config(SecurityConfig::default());
     }
 }
